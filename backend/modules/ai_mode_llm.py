@@ -18,6 +18,7 @@ from modules.llm_client import (
     _is_retryable_model_error,
     _load_prompt,
     _resolve_model_name,
+    clients_with_wrap,
     with_email_reply_standards,
 )
 
@@ -91,7 +92,7 @@ def _generate(
     last_error: Exception | None = None
     retryable = False
 
-    for client in clients:
+    for client in clients_with_wrap(clients):
         for model in model_chain:
             try:
                 response = client.models.generate_content(

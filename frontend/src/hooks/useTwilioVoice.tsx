@@ -114,10 +114,18 @@ function friendlyCallError(err: unknown): string {
       "or if the account is Trial — verify the destination number (or upgrade). Then try again."
     );
   }
+  // Browser has no usable mic (Windows privacy off, headset unplugged, wrong default device).
+  if (/requested device not found|NotFoundError/i.test(raw)) {
+    return (
+      "No microphone found on this computer. Plug in a headset/mic, set it as the default " +
+      "input in Windows Sound settings, allow mic access for this site (padlock → Site settings), " +
+      "then refresh and try Call again."
+    );
+  }
   // Do not match the word "microphone" alone — our own timeout copy used to mention it
   // and got rewritten as a fake mic failure.
   if (
-    /31402|AcquisitionFailed|getting the media failed|NotAllowedError|PermissionDeniedError|NotFoundError|NotReadableError|OverconstrainedError/i.test(
+    /31402|AcquisitionFailed|getting the media failed|NotAllowedError|PermissionDeniedError|NotReadableError|OverconstrainedError/i.test(
       raw,
     )
   ) {

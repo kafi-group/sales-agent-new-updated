@@ -15,6 +15,7 @@ from modules.llm_client import (
     DEFAULT_MODEL,
     _is_retryable_model_error,
     _resolve_model_name,
+    clients_with_wrap,
 )
 
 logger = logging.getLogger(__name__)
@@ -265,7 +266,7 @@ def chat(
     last_error: Exception | None = None
     used_model = model_chain[0]
 
-    for client in clients:
+    for client in clients_with_wrap(clients):
         for model in model_chain:
             used_model = model
             try:

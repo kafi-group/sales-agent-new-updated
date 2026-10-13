@@ -43,10 +43,10 @@ def _transcription_max_tokens(duration_seconds: int | None) -> int:
 
 # Cheapest → slightly more capable. All Flash-family, low cost.
 DEFAULT_MODEL = "gemini-3.1-flash-lite"
+MAX_FALLBACK_MODELS = 2
 DEFAULT_FALLBACK_MODELS = (
     "gemini-2.5-flash",
     "gemini-3.5-flash",
-    "gemini-2.0-flash",
 )
 
 # Google retires models for new API keys — map old IDs to current replacements.
@@ -70,11 +70,20 @@ def _build_model_chain() -> list[str]:
     primary_model = _resolve_model_name(settings.gemini_model or DEFAULT_MODEL)
     fallbacks = _parse_csv_env(settings.gemini_fallback_models) or list(DEFAULT_FALLBACK_MODELS)
     chain: list[str] = []
-    for model in [primary_model, *fallbacks]:
+    for model in [primary_model, *fallbacks[:MAX_FALLBACK_MODELS]]:
         resolved = _resolve_model_name(model)
         if resolved and resolved not in chain:
             chain.append(resolved)
     return chain or [DEFAULT_MODEL]
+
+
+def clients_with_wrap(clients: list[Any]) -> list[Any]:
+    """Key1 → remaining keys → retry Key1 once (after extras are exhausted)."""
+    if not clients:
+        return []
+    if len(clients) == 1:
+        return list(clients)
+    return list(clients) + [clients[0]]
 
 
 def _load_prompt(filename: str) -> str:
@@ -253,7 +262,7 @@ class LLMClient:
         retryable = False
         chain = self.model_chain()
 
-        for client in clients:
+        for client in clients_with_wrap(clients):
             for model in chain:
                 try:
                     return self._generate_with_model(client, model, prompt, system=system)
@@ -315,7 +324,7 @@ class LLMClient:
         if not chain:
             chain = self.model_chain()
         token_budget = _transcription_max_tokens(duration_seconds)
-        for client in clients:
+        for client in clients_with_wrap(clients):
             for model in chain:
                 try:
                     return self._generate_with_model(

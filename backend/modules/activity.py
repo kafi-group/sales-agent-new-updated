@@ -1030,7 +1030,6 @@ def _report_facts_for_llm(report: dict[str, Any]) -> str:
 _DEFAULT_KPI_FALLBACK_MODELS = (
     "gemini-2.5-flash",
     "gemini-3.5-flash",
-    "gemini-2.0-flash",
 )
 
 
@@ -1049,7 +1048,7 @@ def _kpi_model_chain() -> list[str]:
         _DEFAULT_KPI_FALLBACK_MODELS
     )
     chain: list[str] = []
-    for model in [primary, *fallbacks]:
+    for model in [primary, *fallbacks[:2]]:
         resolved = _resolve_model_name(model)
         if resolved and resolved not in chain:
             chain.append(resolved)
@@ -1078,7 +1077,7 @@ def _get_kpi_gemini_clients() -> list[Any]:
 def _generate_kpi_summary_with_dedicated_key(system: str, prompt: str) -> str:
     """Use KPI Gemini key(s) only — never the main or chatbot Gemini keys."""
     from config import settings
-    from modules.llm_client import _is_retryable_model_error
+    from modules.llm_client import _is_retryable_model_error, clients_with_wrap
 
     clients = _get_kpi_gemini_clients()
     if not clients:
@@ -1097,7 +1096,7 @@ def _generate_kpi_summary_with_dedicated_key(system: str, prompt: str) -> str:
     last_error: Exception | None = None
     retryable = False
 
-    for client in clients:
+    for client in clients_with_wrap(clients):
         for model in chain:
             try:
                 response = client.models.generate_content(

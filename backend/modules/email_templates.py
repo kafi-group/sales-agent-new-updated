@@ -240,7 +240,7 @@ def _template_model_chain() -> list[str]:
         DEFAULT_FALLBACK_MODELS
     )
     chain: list[str] = []
-    for name in [primary, *fallbacks]:
+    for name in [primary, *fallbacks[:2]]:
         resolved = _resolve_model_name(name)
         if resolved and resolved not in chain:
             chain.append(resolved)
@@ -248,7 +248,7 @@ def _template_model_chain() -> list[str]:
 
 
 def _generate_template_text(*, system: str, prompt: str) -> str:
-    from modules.llm_client import _is_retryable_model_error
+    from modules.llm_client import _is_retryable_model_error, clients_with_wrap
 
     api_keys = _template_api_keys()
     if not api_keys:
@@ -272,7 +272,7 @@ def _generate_template_text(*, system: str, prompt: str) -> str:
 
     last_error: Exception | None = None
     retryable = False
-    for client in clients:
+    for client in clients_with_wrap(clients):
         for model in _template_model_chain():
             try:
                 response = client.models.generate_content(

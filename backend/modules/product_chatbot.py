@@ -1,7 +1,7 @@
 """Product image chatbot — vision-capable multi-provider LLM with aggressive fallback.
 
 Provider priority (first configured key wins on each turn):
-  1. Gemini Flash chain   — gemini-3.1-flash-lite → gemini-2.5-flash → gemini-3.5-flash → gemini-2.0-flash
+  1. Gemini Flash chain   — gemini-3.1-flash-lite → gemini-2.5-flash → gemini-3.5-flash
   2. OpenAI GPT-4o        — gpt-4o-mini → gpt-4o (vision)
   3. Anthropic Claude     — claude-3-5-haiku → claude-3-5-sonnet (vision)
 
@@ -25,10 +25,9 @@ logger = logging.getLogger(__name__)
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "prompts"
 
 DEFAULT_GEMINI_IMAGE_CHAIN = [
-    "gemini-2.5-flash",
     "gemini-3.1-flash-lite",
+    "gemini-2.5-flash",
     "gemini-3.5-flash",
-    "gemini-2.0-flash",
 ]
 
 DEFAULT_OPENAI_IMAGE_CHAIN = [
@@ -53,7 +52,7 @@ def _parse_csv(value: str | None) -> list[str]:
 def _chatbot_gemini_model_chain() -> list[str]:
     fallbacks = _parse_csv(settings.chatbot_gemini_fallback_models) or DEFAULT_GEMINI_IMAGE_CHAIN
     chain: list[str] = []
-    for model in fallbacks:
+    for model in fallbacks[:3]:
         if model and model not in chain:
             chain.append(model)
     return chain or list(DEFAULT_GEMINI_IMAGE_CHAIN)
@@ -315,7 +314,7 @@ def _try_gemini(
     history: list[dict],
     system: str,
 ) -> str:
-    from modules.llm_client import _is_retryable_model_error
+    from modules.llm_client import _is_retryable_model_error, clients_with_wrap
 
     clients = _get_chatbot_gemini_clients()
     if not clients:
@@ -350,7 +349,7 @@ def _try_gemini(
 
     model_chain = _chatbot_gemini_model_chain()
     last_exc: Exception | None = None
-    for gemini_client in clients:
+    for gemini_client in clients_with_wrap(clients):
         for model in model_chain:
             try:
                 config = genai_types.GenerateContentConfig(

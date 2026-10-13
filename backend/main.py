@@ -229,8 +229,9 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         print(f"WARNING: Twilio calling check failed: {exc}", flush=True)
 
-    # Seed/admin must not take down the whole process — that yields Railway 502s
-    # which browsers misreport as CORS (no Access-Control headers on the proxy error).
+    # Keep lifespan short. Heavy Old-clients repairs used to block ~40–80s after
+    # every Railway deploy, so the edge returned 502 and the dialer showed
+    # "Browser calling is not ready" with Application failed to respond.
     try:
         db = SessionLocal()
         try:
@@ -241,48 +242,75 @@ async def lifespan(app: FastAPI):
             synced = sync_mailboxes_from_env(db)
             if synced:
                 print(f"Synced mailboxes from .env for: {', '.join(synced)}", flush=True)
-
-            from modules.leads import (
-                invalidate_lead_table_filters_cache,
-                invalidate_section_counts_cache,
-            )
-            from modules.post_import_old_clients import backfill_country_from_phones, normalize_countries
-            from sqlalchemy import or_
-            from db.models import Buyer
-
-            null_master_type_count = (
-                db.query(Buyer)
-                .filter(or_(Buyer.master_type.is_(None), Buyer.master_type == ""))
-                .update({"master_type": "fmcg"}, synchronize_session=False)
-            )
-            if null_master_type_count:
-                db.commit()
-                print(f"Startup: backfilled {null_master_type_count} buyer(s) with default master_type='fmcg'.", flush=True)
-
-            country_repair = normalize_countries(db, source="old_clients")
-            phone_backfill = backfill_country_from_phones(db, source="old_clients")
-            repaired = (country_repair.get("changed") or 0) + (phone_backfill.get("changed") or 0)
-            if repaired or null_master_type_count:
-                if repaired:
-                    print(
-                        f"Startup: repaired {repaired} Old clients country value(s) "
-                        f"(spellings={country_repair.get('changed', 0)}, "
-                        f"from_phone={phone_backfill.get('changed', 0)}).",
-                        flush=True,
-                    )
-                invalidate_lead_table_filters_cache()
-                invalidate_section_counts_cache()
         finally:
             db.close()
     except Exception as exc:
         print(f"WARNING: startup seed/admin failed: {exc}", flush=True)
 
-    try:
-        from integrations.voice_client import voice_client
-        if voice_client.browser_ready:
-            voice_client.sync_twiml_app_voice_url()
-    except Exception as exc:
-        print(f"WARNING: failed to sync Twilio TwiML App URL: {exc}", flush=True)
+    def _deferred_startup_repairs() -> None:
+        """Country / master_type backfills — never block the HTTP port."""
+        try:
+            from modules.leads import (
+                invalidate_lead_table_filters_cache,
+                invalidate_section_counts_cache,
+            )
+            from modules.post_import_old_clients import (
+                backfill_country_from_phones,
+                normalize_countries,
+            )
+            from sqlalchemy import or_
+            from db.models import Buyer
+
+            db = SessionLocal()
+            try:
+                null_master_type_count = (
+                    db.query(Buyer)
+                    .filter(or_(Buyer.master_type.is_(None), Buyer.master_type == ""))
+                    .update({"master_type": "fmcg"}, synchronize_session=False)
+                )
+                if null_master_type_count:
+                    db.commit()
+                    print(
+                        f"Startup: backfilled {null_master_type_count} buyer(s) "
+                        "with default master_type='fmcg'.",
+                        flush=True,
+                    )
+
+                country_repair = normalize_countries(db, source="old_clients")
+                phone_backfill = backfill_country_from_phones(db, source="old_clients")
+                repaired = (country_repair.get("changed") or 0) + (
+                    phone_backfill.get("changed") or 0
+                )
+                if repaired or null_master_type_count:
+                    if repaired:
+                        print(
+                            f"Startup: repaired {repaired} Old clients country value(s) "
+                            f"(spellings={country_repair.get('changed', 0)}, "
+                            f"from_phone={phone_backfill.get('changed', 0)}).",
+                            flush=True,
+                        )
+                    invalidate_lead_table_filters_cache()
+                    invalidate_section_counts_cache()
+            finally:
+                db.close()
+        except Exception as exc:  # noqa: BLE001
+            print(f"WARNING: deferred startup repairs failed: {exc}", flush=True)
+
+        try:
+            from integrations.voice_client import voice_client
+
+            if voice_client.browser_ready:
+                voice_client.sync_twiml_app_voice_url()
+        except Exception as exc:  # noqa: BLE001
+            print(f"WARNING: failed to sync Twilio TwiML App URL: {exc}", flush=True)
+
+    import threading
+
+    threading.Thread(
+        target=_deferred_startup_repairs,
+        name="startup-repairs",
+        daemon=True,
+    ).start()
 
     print("Application startup complete.", flush=True)
 

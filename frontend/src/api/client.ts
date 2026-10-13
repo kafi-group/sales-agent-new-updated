@@ -139,6 +139,15 @@ function messageForHttpError(status: number, text: string, statusText: string): 
       "(Gmail and most mailboxes reject messages around 25 MB total)."
     );
   }
+  // Railway edge 502 while the container is still starting (or a worker is wedged).
+  if (
+    status === 502 ||
+    status === 503 ||
+    status === 504 ||
+    /application failed to respond|"code"\s*:\s*502/i.test(text || "")
+  ) {
+    return "Calling service is starting — wait a few seconds and refresh.";
+  }
   const parsed = parseErrorDetail(text, statusText || `Request failed (${status})`);
   return sanitizeUserFacingError(parsed);
 }

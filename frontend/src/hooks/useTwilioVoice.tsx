@@ -114,13 +114,44 @@ function friendlyCallError(err: unknown): string {
       "or if the account is Trial — verify the destination number (or upgrade). Then try again."
     );
   }
-  if (/31402|AcquisitionFailed|getting the media failed|microphone|NotAllowedError|PermissionDeniedError/i.test(raw)) {
-    return "Microphone access failed. Please ensure browser microphone permission is allowed and no other application is blocking the microphone.";
+  // Do not match the word "microphone" alone — our own timeout copy used to mention it
+  // and got rewritten as a fake mic failure.
+  if (
+    /31402|AcquisitionFailed|getting the media failed|NotAllowedError|PermissionDeniedError|NotFoundError|NotReadableError|OverconstrainedError/i.test(
+      raw,
+    )
+  ) {
+    return (
+      "Microphone access failed. Click Allow on the browser mic prompt (padlock → Site settings), " +
+      "close Zoom/Teams/WhatsApp Desktop if they own the mic, then try Call again."
+    );
   }
   if (/31000|31002|31003/i.test(raw)) {
     return `${raw}. Check Twilio Debugger and that Voice geo-permissions allow this country.`;
   }
   return raw;
+}
+
+/** Ask for the mic during the Call click — before the slow prepare request — so Chrome
+ * still treats it as a user gesture. Twilio Device.connect needs this later. */
+async function requestMicAccess(): Promise<void> {
+  if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+    throw new Error(
+      "This browser cannot access the microphone. Use Chrome or Edge on HTTPS.",
+    );
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    for (const track of stream.getTracks()) {
+      try {
+        track.stop();
+      } catch {
+        /* ignore */
+      }
+    }
+  } catch (err) {
+    throw new Error(friendlyCallError(err));
+  }
 }
 
 /** PSTN failures that mean the client's phone never rang. Remarks stay closed. */
@@ -460,7 +491,7 @@ export function TwilioVoiceProvider({ children }: { children: ReactNode }) {
       if (isCancelled()) throw new DialCancelledError();
       if (device.state !== "registered") {
         throw new Error(
-          "Twilio calling is not ready. Refresh the page, allow microphone in the browser (padlock icon), or check Settings → Twilio.",
+          "Twilio calling is not ready. Refresh the page, or check Settings → Twilio.",
         );
       }
       if (dialAttemptRef.current) {
@@ -474,7 +505,7 @@ export function TwilioVoiceProvider({ children }: { children: ReactNode }) {
           connectSettled = true;
           reject(
             new Error(
-              "Call connection timed out. The client's phone was not reached. Allow the microphone and try again.",
+              "Call connection timed out. The client's phone was not reached. Check your network and try again.",
             ),
           );
         }, 40000);
@@ -566,7 +597,7 @@ export function TwilioVoiceProvider({ children }: { children: ReactNode }) {
     }
     if (!device || device.state !== "registered") {
       throw new Error(
-        "Twilio calling is not ready. Refresh the page, allow microphone in the browser (padlock icon), or check Settings → Twilio.",
+        "Twilio calling is not ready. Refresh the page, or check Settings → Twilio.",
       );
     }
     return device;
@@ -611,7 +642,11 @@ export function TwilioVoiceProvider({ children }: { children: ReactNode }) {
   const placeCall = useCallback(
     (leadId: number, contactId?: number, phone?: string) =>
       withDialLock(async (isCancelled) => {
-        const device = await ensureRegisteredDevice();
+        // Start mic + device registration immediately (same click) before the slow
+        // prepare API — otherwise Chrome drops the user-gesture and getUserMedia fails.
+        const micReady = requestMicAccess();
+        const deviceReady = ensureRegisteredDevice();
+        const [device] = await Promise.all([deviceReady, micReady]);
         if (isCancelled()) throw new DialCancelledError();
 
         const prep = await client.initiateLeadCall(leadId, {
@@ -633,7 +668,9 @@ export function TwilioVoiceProvider({ children }: { children: ReactNode }) {
   const placeManualCall = useCallback(
     (phone: string, options?: { contactName?: string; country?: string }) =>
       withDialLock(async (isCancelled) => {
-        const device = await ensureRegisteredDevice();
+        const micReady = requestMicAccess();
+        const deviceReady = ensureRegisteredDevice();
+        const [device] = await Promise.all([deviceReady, micReady]);
         if (isCancelled()) throw new DialCancelledError();
 
         const prep = await client.initiateManualCall({

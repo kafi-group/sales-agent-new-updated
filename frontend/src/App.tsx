@@ -118,6 +118,9 @@ function CallInitBanner() {
   if (!voice) return null;
 
   if (voice.callError) {
+    const micFail = /microphone|31402|AcquisitionFailed|getting the media failed/i.test(
+      voice.callError,
+    );
     return (
       <div className="mb-7 p-4 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-100 text-sm">
         <div className="flex items-start justify-between gap-3">
@@ -125,10 +128,9 @@ function CallInitBanner() {
             <p className="font-medium">Call did not connect</p>
             <p className="mt-1 text-rose-200/85">{voice.callError}</p>
             <p className="mt-2 text-xs text-rose-200/60">
-              Twilio Console → Monitor → Logs (error on Voice URL), Voice → Settings → Geo
-              Permissions (enable the lead’s country), and confirm TwiML App Voice URL is your
-              Railway API{" "}
-              <code className="text-rose-100/80">/api/webhooks/twilio/voice/client-dial</code>.
+              {micFail
+                ? "Use Chrome/Edge on HTTPS. Click the padlock → Site settings → Microphone → Allow. Close Zoom/Teams/WhatsApp Desktop, then press Call again."
+                : "Twilio Console → Monitor → Logs, Voice → Settings → Geo Permissions (enable the lead’s country), and confirm TwiML App Voice URL is your Railway API /api/webhooks/twilio/voice/client-dial."}
             </p>
           </div>
           <button

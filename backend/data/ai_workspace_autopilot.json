@@ -1,0 +1,8 @@
+{
+  "enabled": false,
+  "auto_remarks": true,
+  "auto_interested": true,
+  "auto_not_interested": true,
+  "auto_no_response": true,
+  "auto_follow_up": true
+}

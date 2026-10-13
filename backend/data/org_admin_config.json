@@ -1,0 +1,44 @@
+{
+  "master_lists": [
+    {
+      "key": "fmcg",
+      "label": "Master FMCG",
+      "enabled": true,
+      "sort_order": 0
+    },
+    {
+      "key": "minerals_ores",
+      "label": "Minerals & Ores",
+      "enabled": true,
+      "sort_order": 1
+    },
+    {
+      "key": "other_items",
+      "label": "Other Items",
+      "enabled": true,
+      "sort_order": 2
+    }
+  ],
+  "user_master_access": {},
+  "agent_master_access": {},
+  "ai_sales_agents": [
+    {
+      "id": "female",
+      "name": "Sara",
+      "active": true,
+      "product_focus": "",
+      "voice": "en-US-Neural2-F",
+      "gender_label": "female",
+      "protected": true
+    },
+    {
+      "id": "male",
+      "name": "Rayan",
+      "active": true,
+      "product_focus": "",
+      "voice": "en-US-Neural2-D",
+      "gender_label": "male",
+      "protected": true
+    }
+  ]
+}

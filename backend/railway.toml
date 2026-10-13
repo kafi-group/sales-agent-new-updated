@@ -1,0 +1,11 @@
+[build]
+builder = "nixpacks"
+# Only rebuild when backend code changes. Frontend-only Vercel pushes must NOT
+# restart this service (that caused emails/contacts 502s during UI deploys).
+watchPatterns = ["backend/**"]
+
+[deploy]
+# Use start.sh: migrate with 45s cap, then always boot uvicorn (avoids Railway 502).
+startCommand = "sh start.sh"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10

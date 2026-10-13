@@ -1,0 +1,107 @@
+{
+  "default_unit": "USD/carton",
+  "categories": {
+    "pickles": {
+      "unit": "USD/carton",
+      "standard": 18.5,
+      "bulk_carton": 16.8,
+      "bulk_container": 15.2
+    },
+    "chutneys": {
+      "unit": "USD/carton",
+      "standard": 17.0,
+      "bulk_carton": 15.5,
+      "bulk_container": 14.0
+    },
+    "pastes": {
+      "unit": "USD/carton",
+      "standard": 16.0,
+      "bulk_carton": 14.5,
+      "bulk_container": 13.0
+    },
+    "sauces": {
+      "unit": "USD/carton",
+      "standard": 19.0,
+      "bulk_carton": 17.2,
+      "bulk_container": 15.8
+    },
+    "himalayan_salt": {
+      "unit": "USD/MT",
+      "standard": 850,
+      "bulk_100mt": 820,
+      "bulk_500mt": 790
+    },
+    "spices_masala": {
+      "unit": "USD/carton",
+      "standard": 22.0,
+      "bulk_carton": 20.0,
+      "bulk_container": 18.5
+    },
+    "fried_onion": {
+      "unit": "USD/carton",
+      "standard": 24.0,
+      "bulk_carton": 21.5,
+      "bulk_container": 19.8
+    },
+    "vermicelli_desserts": {
+      "unit": "USD/carton",
+      "standard": 20.0,
+      "bulk_carton": 18.0,
+      "bulk_container": 16.5
+    },
+    "rusks": {
+      "unit": "USD/carton",
+      "standard": 15.0,
+      "bulk_carton": 13.8,
+      "bulk_container": 12.5
+    },
+    "jams_jellies": {
+      "unit": "USD/carton",
+      "standard": 21.0,
+      "bulk_carton": 19.0,
+      "bulk_container": 17.5
+    },
+    "honey": {
+      "unit": "USD/carton",
+      "standard": 28.0,
+      "bulk_carton": 25.5,
+      "bulk_container": 23.0
+    },
+    "moringa_wellness": {
+      "unit": "USD/carton",
+      "standard": 26.0,
+      "bulk_carton": 23.5,
+      "bulk_container": 21.0
+    },
+    "vinegar_water": {
+      "unit": "USD/carton",
+      "standard": 14.0,
+      "bulk_carton": 12.8,
+      "bulk_container": 11.5
+    },
+    "juices": {
+      "unit": "USD/carton",
+      "standard": 18.0,
+      "bulk_carton": 16.5,
+      "bulk_container": 15.0
+    },
+    "snacks_ingredients": {
+      "unit": "USD/carton",
+      "standard": 16.5,
+      "bulk_carton": 15.0,
+      "bulk_container": 13.8
+    },
+    "rice": {
+      "unit": "USD/MT",
+      "standard": 920,
+      "bulk_100mt": 895,
+      "bulk_500mt": 870
+    },
+    "other": {
+      "unit": "USD/carton",
+      "standard": 18.0,
+      "bulk_carton": 16.0,
+      "bulk_container": 14.5
+    }
+  }
+}

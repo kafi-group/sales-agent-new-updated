@@ -1,0 +1,10 @@
+[build]
+builder = "NIXPACKS"
+buildCommand = "cd backend && pip install -r requirements.txt"
+watchPatterns = ["backend/**"]
+
+[deploy]
+# start.sh caps migrate at 45s so a locked ALTER cannot block boot forever.
+startCommand = "cd backend && sh start.sh"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10

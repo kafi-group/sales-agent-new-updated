@@ -1,0 +1,81 @@
+{
+  "schedules": {
+    "female": {
+      "enabled": false,
+      "time": "10:00",
+      "end_time": "",
+      "stop_mode": "until_done",
+      "weekdays": [
+        "mon",
+        "tue",
+        "wed",
+        "thu",
+        "fri",
+        "sat",
+        "sun"
+      ],
+      "cooldown_sec": 45,
+      "last_run_key": null,
+      "last_started_at": null
+    },
+    "male": {
+      "enabled": false,
+      "time": "10:00",
+      "end_time": "",
+      "stop_mode": "until_done",
+      "weekdays": [
+        "mon",
+        "tue",
+        "wed",
+        "thu",
+        "fri",
+        "sat",
+        "sun"
+      ],
+      "cooldown_sec": 45,
+      "last_run_key": null,
+      "last_started_at": null
+    }
+  },
+  "run_state": {
+    "female": {
+      "status": "idle",
+      "current_buyer_id": null,
+      "current_label": null,
+      "next_allowed_at": null,
+      "progress": {
+        "done": 0,
+        "total": 0,
+        "succeeded": 0,
+        "failed": 0,
+        "skipped": 0,
+        "filled_total": 0
+      },
+      "log": [],
+      "last_report": null,
+      "run_history": [],
+      "updated_at": null,
+      "run_id": null
+    },
+    "male": {
+      "status": "idle",
+      "current_buyer_id": null,
+      "current_label": null,
+      "next_allowed_at": null,
+      "progress": {
+        "done": 0,
+        "total": 0,
+        "succeeded": 0,
+        "failed": 0,
+        "skipped": 0,
+        "filled_total": 0
+      },
+      "log": [],
+      "last_report": null,
+      "run_history": [],
+      "updated_at": null,
+      "run_id": null
+    }
+  },
+  "highlights_synced_v1": true
+}

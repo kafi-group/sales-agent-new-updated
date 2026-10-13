@@ -1,0 +1,27 @@
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+# Pin <2.1: SQLAlchemy 2.1 defaults to psycopg v3; we ship psycopg2-binary.
+# Unpinned installs crashed Railway boot (ModuleNotFoundError: psycopg) and
+# left the Inbox Auto Trash API (and other new routes) unreachable.
+sqlalchemy>=2.0.36,<2.1
+alembic>=1.14.0
+psycopg2-binary>=2.9.10
+pydantic>=2.10.0
+pydantic-settings>=2.6.0
+httpx>=0.28.0
+beautifulsoup4>=4.12.0
+apscheduler>=3.10.4
+python-multipart>=0.0.12
+weasyprint>=63.0
+openpyxl>=3.1.0
+xlrd>=2.0.1
+rarfile>=4.2
+google-api-python-client>=2.150.0
+google-auth>=2.36.0
+google-auth-oauthlib>=1.2.0
+google-genai>=1.0.0
+ddgs>=9.0.0
+twilio>=9.0.0
+imap-tools>=1.5.0
+msal>=1.28.0
+PyJWT>=2.9.0

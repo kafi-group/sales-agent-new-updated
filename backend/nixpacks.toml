@@ -1,0 +1,15 @@
+# Let Nixpacks auto-install Python deps; add Node only for Git builds of the SPA.
+providers = ["python", "node"]
+
+[phases.setup]
+aptPkgs = ["unrar"]
+
+[phases.build]
+dependsOn = ["install"]
+cmds = [
+  "if [ -f static/index.html ]; then echo 'Using pre-built backend/static'; elif [ -f ../frontend/package.json ]; then cd ../frontend && npm run build && rm -rf ../backend/static && mkdir -p ../backend/static && cp -r dist/* ../backend/static/; else echo 'API-only deploy — SPA served from Vercel'; fi",
+]
+
+[start]
+# Prefer start.sh (45s migrate cap). Fallback keeps boot from hanging forever on Alembic.
+cmd = "sh start.sh"

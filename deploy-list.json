@@ -1,0 +1,1587 @@
+﻿[
+  {
+    "id": "201e9d9f-f2f1-409e-b467-ccbd76139351",
+    "status": "FAILED",
+    "createdAt": "2026-08-10T10:40:24.731Z",
+    "meta": {
+      "branch": "main",
+      "buildOnly": false,
+      "commitAuthor": "kafi-group",
+      "commitHash": "44ecd28b4e796f218df2ba01e6eeb6d1a8095577",
+      "commitMessage": "Revert start.sh Railway entrypoint; keep proven inline migrate command.",
+      "configFile": "/backend/railway.toml",
+      "fileServiceManifest": {
+        "build": {
+          "builder": "NIXPACKS",
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1"
+        }
+      },
+      "logsV2": true,
+      "nixpacksProviders": [],
+      "plan": "hobby",
+      "propertyFileMapping": {
+        "build.builder": "$.build.builder",
+        "build.watchPatterns": "$.build.watchPatterns",
+        "deploy.restartPolicyMaxRetries": "$.deploy.restartPolicyMaxRetries",
+        "deploy.restartPolicyType": "$.deploy.restartPolicyType",
+        "deploy.startCommand": "$.deploy.startCommand"
+      },
+      "reason": "deploy",
+      "repo": "kafi-group/Kafi-Sales-Agent",
+      "rootDirectory": "/backend",
+      "runtime": "V2",
+      "serviceManifest": {
+        "build": {
+          "buildCommand": null,
+          "buildEnvironment": "V3",
+          "builder": "NIXPACKS",
+          "dockerfilePath": null,
+          "nixpacksConfigPath": "/backend/nixpacks.toml",
+          "nixpacksPlan": null,
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "cronSchedule": null,
+          "drainingSeconds": null,
+          "healthcheckPath": null,
+          "healthcheckTimeout": null,
+          "ipv6EgressEnabled": false,
+          "limitOverride": null,
+          "multiRegionConfig": {
+            "sfo": {
+              "numReplicas": 1
+            }
+          },
+          "numReplicas": 1,
+          "overlapSeconds": null,
+          "preDeployCommand": null,
+          "region": null,
+          "registryCredentials": null,
+          "requiredMountPath": null,
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "runtime": "V2",
+          "sleepApplication": false,
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1",
+          "useLegacyStacker": false
+        }
+      },
+      "volumeMounts": []
+    }
+  },
+  {
+    "id": "056d4f1b-a4cf-4ca7-89ac-a1eceff246f8",
+    "status": "FAILED",
+    "createdAt": "2026-08-10T10:36:47.591Z",
+    "meta": {
+      "branch": "main",
+      "buildOnly": false,
+      "commitAuthor": "kafi-group",
+      "commitHash": "35ebc3caadad2f7f3afae9317332a08f77f2addd",
+      "commitMessage": "Improve agent-bridge deploy: migration retries and webhook alias routes.",
+      "configFile": "/backend/railway.toml",
+      "fileServiceManifest": {
+        "build": {
+          "builder": "NIXPACKS",
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "startCommand": "sh start.sh"
+        }
+      },
+      "logsV2": true,
+      "nixpacksProviders": [],
+      "plan": "hobby",
+      "propertyFileMapping": {
+        "build.builder": "$.build.builder",
+        "build.watchPatterns": "$.build.watchPatterns",
+        "deploy.restartPolicyMaxRetries": "$.deploy.restartPolicyMaxRetries",
+        "deploy.restartPolicyType": "$.deploy.restartPolicyType",
+        "deploy.startCommand": "$.deploy.startCommand"
+      },
+      "reason": "deploy",
+      "repo": "kafi-group/Kafi-Sales-Agent",
+      "rootDirectory": "/backend",
+      "runtime": "V2",
+      "serviceManifest": {
+        "build": {
+          "buildCommand": null,
+          "buildEnvironment": "V3",
+          "builder": "NIXPACKS",
+          "dockerfilePath": null,
+          "nixpacksConfigPath": "/backend/nixpacks.toml",
+          "nixpacksPlan": null,
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "cronSchedule": null,
+          "drainingSeconds": null,
+          "healthcheckPath": null,
+          "healthcheckTimeout": null,
+          "ipv6EgressEnabled": false,
+          "limitOverride": null,
+          "multiRegionConfig": {
+            "sfo": {
+              "numReplicas": 1
+            }
+          },
+          "numReplicas": 1,
+          "overlapSeconds": null,
+          "preDeployCommand": null,
+          "region": null,
+          "registryCredentials": null,
+          "requiredMountPath": null,
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "runtime": "V2",
+          "sleepApplication": false,
+          "startCommand": "sh start.sh",
+          "useLegacyStacker": false
+        }
+      },
+      "volumeMounts": []
+    }
+  },
+  {
+    "id": "57447176-bcc1-4d58-9218-04c14af97663",
+    "status": "FAILED",
+    "createdAt": "2026-08-10T10:32:48.814Z",
+    "meta": {
+      "buildOnly": false,
+      "cliAgentSessionId": "c38680c6-5e52-403f-9fd9-c06495948c35",
+      "cliCaller": "cursor",
+      "configFile": "/railway.toml",
+      "fileServiceManifest": {
+        "build": {
+          "builder": "NIXPACKS",
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1"
+        }
+      },
+      "logsV2": true,
+      "nixpacksProviders": [],
+      "propertyFileMapping": {
+        "build.builder": "$.build.builder",
+        "build.watchPatterns": "$.build.watchPatterns",
+        "deploy.restartPolicyMaxRetries": "$.deploy.restartPolicyMaxRetries",
+        "deploy.restartPolicyType": "$.deploy.restartPolicyType",
+        "deploy.startCommand": "$.deploy.startCommand"
+      },
+      "reason": "deploy",
+      "rootDirectory": "/backend",
+      "runtime": "V2",
+      "serviceManifest": {
+        "build": {
+          "buildCommand": null,
+          "buildEnvironment": "V3",
+          "builder": "NIXPACKS",
+          "dockerfilePath": null,
+          "nixpacksConfigPath": null,
+          "nixpacksPlan": null,
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "cronSchedule": null,
+          "drainingSeconds": null,
+          "healthcheckPath": null,
+          "healthcheckTimeout": null,
+          "ipv6EgressEnabled": false,
+          "limitOverride": null,
+          "multiRegionConfig": {
+            "sfo": {
+              "numReplicas": 1
+            }
+          },
+          "numReplicas": 1,
+          "overlapSeconds": null,
+          "preDeployCommand": null,
+          "region": null,
+          "registryCredentials": null,
+          "requiredMountPath": null,
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "runtime": "V2",
+          "sleepApplication": false,
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1",
+          "useLegacyStacker": false
+        }
+      },
+      "volumeMounts": []
+    }
+  },
+  {
+    "id": "13ec4e68-79da-4405-b26e-1656aed8d6a2",
+    "status": "SKIPPED",
+    "createdAt": "2026-08-10T10:29:24.832Z",
+    "meta": {
+      "buildOnly": false,
+      "cliAgentSessionId": "c38680c6-5e52-403f-9fd9-c06495948c35",
+      "cliCaller": "cursor",
+      "configFile": "/backend/railway.toml",
+      "fileServiceManifest": {
+        "build": {
+          "builder": "NIXPACKS",
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1"
+        }
+      },
+      "logsV2": true,
+      "nixpacksProviders": [],
+      "propertyFileMapping": {
+        "build.builder": "$.build.builder",
+        "build.watchPatterns": "$.build.watchPatterns",
+        "deploy.restartPolicyMaxRetries": "$.deploy.restartPolicyMaxRetries",
+        "deploy.restartPolicyType": "$.deploy.restartPolicyType",
+        "deploy.startCommand": "$.deploy.startCommand"
+      },
+      "reason": "deploy",
+      "rootDirectory": "/backend",
+      "runtime": "V2",
+      "serviceManifest": {
+        "build": {
+          "buildCommand": null,
+          "buildEnvironment": "V3",
+          "builder": "NIXPACKS",
+          "dockerfilePath": null,
+          "nixpacksConfigPath": "/backend/nixpacks.toml",
+          "nixpacksPlan": null,
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "cronSchedule": null,
+          "drainingSeconds": null,
+          "healthcheckPath": null,
+          "healthcheckTimeout": null,
+          "ipv6EgressEnabled": false,
+          "limitOverride": null,
+          "multiRegionConfig": {
+            "sfo": {
+              "numReplicas": 1
+            }
+          },
+          "numReplicas": 1,
+          "overlapSeconds": null,
+          "preDeployCommand": null,
+          "region": null,
+          "registryCredentials": null,
+          "requiredMountPath": null,
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "runtime": "V2",
+          "sleepApplication": false,
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1",
+          "useLegacyStacker": false
+        }
+      },
+      "skippedReason": "No changes to watched files",
+      "volumeMounts": []
+    }
+  },
+  {
+    "id": "1ffb97c2-404d-4032-9c58-f53766cec5c6",
+    "status": "FAILED",
+    "createdAt": "2026-08-10T10:23:19.261Z",
+    "meta": {
+      "buildOnly": false,
+      "cliAgentSessionId": "c38680c6-5e52-403f-9fd9-c06495948c35",
+      "cliCaller": "cursor",
+      "configFile": "/backend/railway.toml",
+      "fileServiceManifest": {
+        "build": {
+          "builder": "NIXPACKS",
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1"
+        }
+      },
+      "logsV2": true,
+      "nixpacksProviders": [],
+      "propertyFileMapping": {
+        "build.builder": "$.build.builder",
+        "build.watchPatterns": "$.build.watchPatterns",
+        "deploy.restartPolicyMaxRetries": "$.deploy.restartPolicyMaxRetries",
+        "deploy.restartPolicyType": "$.deploy.restartPolicyType",
+        "deploy.startCommand": "$.deploy.startCommand"
+      },
+      "reason": "deploy",
+      "rootDirectory": "/backend",
+      "runtime": "V2",
+      "serviceManifest": {
+        "build": {
+          "buildCommand": null,
+          "buildEnvironment": "V3",
+          "builder": "NIXPACKS",
+          "dockerfilePath": null,
+          "nixpacksConfigPath": "/backend/nixpacks.toml",
+          "nixpacksPlan": null,
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "cronSchedule": null,
+          "drainingSeconds": null,
+          "healthcheckPath": null,
+          "healthcheckTimeout": null,
+          "ipv6EgressEnabled": false,
+          "limitOverride": null,
+          "multiRegionConfig": {
+            "sfo": {
+              "numReplicas": 1
+            }
+          },
+          "numReplicas": 1,
+          "overlapSeconds": null,
+          "preDeployCommand": null,
+          "region": null,
+          "registryCredentials": null,
+          "requiredMountPath": null,
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "runtime": "V2",
+          "sleepApplication": false,
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1",
+          "useLegacyStacker": false
+        }
+      },
+      "volumeMounts": []
+    }
+  },
+  {
+    "id": "05a1d7ea-2c67-4a67-80a9-1ee528ebbf1b",
+    "status": "FAILED",
+    "createdAt": "2026-08-10T10:19:26.455Z",
+    "meta": {
+      "branch": "main",
+      "buildOnly": false,
+      "commitAuthor": "kafi-group",
+      "commitHash": "282f9cd3f9bde35b70dae41f891aef71c981bce6",
+      "commitMessage": "Fix agent-bridge auth: bypass session middleware for bridge routes.",
+      "configFile": "/backend/railway.toml",
+      "fileServiceManifest": {
+        "build": {
+          "builder": "NIXPACKS",
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1"
+        }
+      },
+      "logsV2": true,
+      "nixpacksProviders": [],
+      "plan": "hobby",
+      "propertyFileMapping": {
+        "build.builder": "$.build.builder",
+        "build.watchPatterns": "$.build.watchPatterns",
+        "deploy.restartPolicyMaxRetries": "$.deploy.restartPolicyMaxRetries",
+        "deploy.restartPolicyType": "$.deploy.restartPolicyType",
+        "deploy.startCommand": "$.deploy.startCommand"
+      },
+      "reason": "deploy",
+      "repo": "kafi-group/Kafi-Sales-Agent",
+      "rootDirectory": "/backend",
+      "runtime": "V2",
+      "serviceManifest": {
+        "build": {
+          "buildCommand": null,
+          "buildEnvironment": "V3",
+          "builder": "NIXPACKS",
+          "dockerfilePath": null,
+          "nixpacksConfigPath": "/backend/nixpacks.toml",
+          "nixpacksPlan": null,
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "cronSchedule": null,
+          "drainingSeconds": null,
+          "healthcheckPath": null,
+          "healthcheckTimeout": null,
+          "ipv6EgressEnabled": false,
+          "limitOverride": null,
+          "multiRegionConfig": {
+            "sfo": {
+              "numReplicas": 1
+            }
+          },
+          "numReplicas": 1,
+          "overlapSeconds": null,
+          "preDeployCommand": null,
+          "region": null,
+          "registryCredentials": null,
+          "requiredMountPath": null,
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "runtime": "V2",
+          "sleepApplication": false,
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1",
+          "useLegacyStacker": false
+        }
+      },
+      "volumeMounts": []
+    }
+  },
+  {
+    "id": "6c879b3c-7491-4368-9c97-c1d0e9085fd0",
+    "status": "SKIPPED",
+    "createdAt": "2026-08-10T10:15:40.070Z",
+    "meta": {
+      "buildOnly": false,
+      "cliAgentSessionId": "c38680c6-5e52-403f-9fd9-c06495948c35",
+      "cliCaller": "cursor",
+      "configFile": "/backend/railway.toml",
+      "fileServiceManifest": {
+        "build": {
+          "builder": "NIXPACKS",
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1"
+        }
+      },
+      "logsV2": true,
+      "nixpacksProviders": [],
+      "propertyFileMapping": {
+        "build.builder": "$.build.builder",
+        "build.watchPatterns": "$.build.watchPatterns",
+        "deploy.restartPolicyMaxRetries": "$.deploy.restartPolicyMaxRetries",
+        "deploy.restartPolicyType": "$.deploy.restartPolicyType",
+        "deploy.startCommand": "$.deploy.startCommand"
+      },
+      "reason": "deploy",
+      "rootDirectory": "/backend",
+      "runtime": "V2",
+      "serviceManifest": {
+        "build": {
+          "buildCommand": null,
+          "buildEnvironment": "V3",
+          "builder": "NIXPACKS",
+          "dockerfilePath": null,
+          "nixpacksConfigPath": "/backend/nixpacks.toml",
+          "nixpacksPlan": null,
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "cronSchedule": null,
+          "drainingSeconds": null,
+          "healthcheckPath": null,
+          "healthcheckTimeout": null,
+          "ipv6EgressEnabled": false,
+          "limitOverride": null,
+          "multiRegionConfig": {
+            "sfo": {
+              "numReplicas": 1
+            }
+          },
+          "numReplicas": 1,
+          "overlapSeconds": null,
+          "preDeployCommand": null,
+          "region": null,
+          "registryCredentials": null,
+          "requiredMountPath": null,
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "runtime": "V2",
+          "sleepApplication": false,
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1",
+          "useLegacyStacker": false
+        }
+      },
+      "skippedReason": "No changes to watched files",
+      "volumeMounts": []
+    }
+  },
+  {
+    "id": "6192f496-1acf-48fb-b4ac-b78a3ed4b907",
+    "status": "FAILED",
+    "createdAt": "2026-08-10T10:15:30.695Z",
+    "meta": {
+      "buildOnly": false,
+      "cliAgentSessionId": "c38680c6-5e52-403f-9fd9-c06495948c35",
+      "cliCaller": "cursor",
+      "configFile": "/backend/railway.toml",
+      "fileServiceManifest": {
+        "build": {
+          "builder": "NIXPACKS",
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1"
+        }
+      },
+      "ignoreWatchPatterns": true,
+      "logsV2": true,
+      "nixpacksProviders": [],
+      "propertyFileMapping": {
+        "build.builder": "$.build.builder",
+        "build.watchPatterns": "$.build.watchPatterns",
+        "deploy.restartPolicyMaxRetries": "$.deploy.restartPolicyMaxRetries",
+        "deploy.restartPolicyType": "$.deploy.restartPolicyType",
+        "deploy.startCommand": "$.deploy.startCommand"
+      },
+      "reason": "redeploy",
+      "rootDirectory": "/backend",
+      "runtime": "V2",
+      "serviceManifest": {
+        "build": {
+          "buildCommand": null,
+          "buildEnvironment": "V3",
+          "builder": "NIXPACKS",
+          "dockerfilePath": null,
+          "nixpacksConfigPath": "/backend/nixpacks.toml",
+          "nixpacksPlan": null,
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "cronSchedule": null,
+          "drainingSeconds": null,
+          "healthcheckPath": null,
+          "healthcheckTimeout": null,
+          "ipv6EgressEnabled": false,
+          "limitOverride": null,
+          "multiRegionConfig": {
+            "sfo": {
+              "numReplicas": 1
+            }
+          },
+          "numReplicas": 1,
+          "overlapSeconds": null,
+          "preDeployCommand": null,
+          "region": null,
+          "registryCredentials": null,
+          "requiredMountPath": null,
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "runtime": "V2",
+          "sleepApplication": false,
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1",
+          "useLegacyStacker": false
+        }
+      },
+      "skipBuildCache": true,
+      "volumeMounts": []
+    }
+  },
+  {
+    "id": "a5905c42-f755-4605-a1f1-bd54643f459d",
+    "status": "FAILED",
+    "createdAt": "2026-08-10T10:08:56.249Z",
+    "meta": {
+      "buildOnly": false,
+      "cliAgentSessionId": "c38680c6-5e52-403f-9fd9-c06495948c35",
+      "cliCaller": "cursor",
+      "configFile": "/backend/railway.toml",
+      "fileServiceManifest": {
+        "build": {
+          "builder": "NIXPACKS",
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1"
+        }
+      },
+      "logsV2": true,
+      "nixpacksProviders": [],
+      "propertyFileMapping": {
+        "build.builder": "$.build.builder",
+        "build.watchPatterns": "$.build.watchPatterns",
+        "deploy.restartPolicyMaxRetries": "$.deploy.restartPolicyMaxRetries",
+        "deploy.restartPolicyType": "$.deploy.restartPolicyType",
+        "deploy.startCommand": "$.deploy.startCommand"
+      },
+      "reason": "deploy",
+      "rootDirectory": "/backend",
+      "runtime": "V2",
+      "serviceManifest": {
+        "build": {
+          "buildCommand": null,
+          "buildEnvironment": "V3",
+          "builder": "NIXPACKS",
+          "dockerfilePath": null,
+          "nixpacksConfigPath": "/backend/nixpacks.toml",
+          "nixpacksPlan": null,
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "cronSchedule": null,
+          "drainingSeconds": null,
+          "healthcheckPath": null,
+          "healthcheckTimeout": null,
+          "ipv6EgressEnabled": false,
+          "limitOverride": null,
+          "multiRegionConfig": {
+            "sfo": {
+              "numReplicas": 1
+            }
+          },
+          "numReplicas": 1,
+          "overlapSeconds": null,
+          "preDeployCommand": null,
+          "region": null,
+          "registryCredentials": null,
+          "requiredMountPath": null,
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "runtime": "V2",
+          "sleepApplication": false,
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1",
+          "useLegacyStacker": false
+        }
+      },
+      "volumeMounts": []
+    }
+  },
+  {
+    "id": "2cc733b1-944c-4c8a-bc43-b5a0e43e4b7b",
+    "status": "FAILED",
+    "createdAt": "2026-08-10T10:05:43.783Z",
+    "meta": {
+      "branch": "main",
+      "buildOnly": false,
+      "commitAuthor": "kafi-group",
+      "commitHash": "77edf760a983420725a591aa60f55b74c74f8bdd",
+      "commitMessage": "Add read-only agent-bridge API for PA dashboard integration.",
+      "configFile": "/backend/railway.toml",
+      "fileServiceManifest": {
+        "build": {
+          "builder": "NIXPACKS",
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1"
+        }
+      },
+      "logsV2": true,
+      "nixpacksProviders": [],
+      "plan": "hobby",
+      "propertyFileMapping": {
+        "build.builder": "$.build.builder",
+        "build.watchPatterns": "$.build.watchPatterns",
+        "deploy.restartPolicyMaxRetries": "$.deploy.restartPolicyMaxRetries",
+        "deploy.restartPolicyType": "$.deploy.restartPolicyType",
+        "deploy.startCommand": "$.deploy.startCommand"
+      },
+      "reason": "deploy",
+      "repo": "kafi-group/Kafi-Sales-Agent",
+      "rootDirectory": "/backend",
+      "runtime": "V2",
+      "serviceManifest": {
+        "build": {
+          "buildCommand": null,
+          "buildEnvironment": "V3",
+          "builder": "NIXPACKS",
+          "dockerfilePath": null,
+          "nixpacksConfigPath": "/backend/nixpacks.toml",
+          "nixpacksPlan": null,
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "cronSchedule": null,
+          "drainingSeconds": null,
+          "healthcheckPath": null,
+          "healthcheckTimeout": null,
+          "ipv6EgressEnabled": false,
+          "limitOverride": null,
+          "multiRegionConfig": {
+            "sfo": {
+              "numReplicas": 1
+            }
+          },
+          "numReplicas": 1,
+          "overlapSeconds": null,
+          "preDeployCommand": null,
+          "region": null,
+          "registryCredentials": null,
+          "requiredMountPath": null,
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "runtime": "V2",
+          "sleepApplication": false,
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1",
+          "useLegacyStacker": false
+        }
+      },
+      "volumeMounts": []
+    }
+  },
+  {
+    "id": "682a97bd-ec48-4bbc-a18d-c6f0c914f321",
+    "status": "SUCCESS",
+    "createdAt": "2026-08-10T10:05:22.151Z",
+    "meta": {
+      "buildOnly": false,
+      "cliAgentSessionId": "c38680c6-5e52-403f-9fd9-c06495948c35",
+      "cliCaller": "cursor",
+      "configFile": "/backend/railway.toml",
+      "fileServiceManifest": {
+        "build": {
+          "builder": "NIXPACKS",
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1"
+        }
+      },
+      "imageDigest": "sha256:c9235354a5bb1c26e2314076e67c9db92385c2beecca98cf1585e5f1f3a944e3",
+      "logsV2": true,
+      "nixpacksProviders": [],
+      "propertyFileMapping": {
+        "build.builder": "$.build.builder",
+        "build.watchPatterns": "$.build.watchPatterns",
+        "deploy.restartPolicyMaxRetries": "$.deploy.restartPolicyMaxRetries",
+        "deploy.restartPolicyType": "$.deploy.restartPolicyType",
+        "deploy.startCommand": "$.deploy.startCommand"
+      },
+      "reason": "deploy",
+      "rootDirectory": "/backend",
+      "runtime": "V2",
+      "serviceManifest": {
+        "build": {
+          "buildCommand": null,
+          "buildEnvironment": "V3",
+          "builder": "NIXPACKS",
+          "dockerfilePath": null,
+          "nixpacksConfigPath": "/backend/nixpacks.toml",
+          "nixpacksPlan": null,
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "cronSchedule": null,
+          "drainingSeconds": null,
+          "healthcheckPath": null,
+          "healthcheckTimeout": null,
+          "ipv6EgressEnabled": false,
+          "limitOverride": null,
+          "multiRegionConfig": {
+            "sfo": {
+              "numReplicas": 1
+            }
+          },
+          "numReplicas": 1,
+          "overlapSeconds": null,
+          "preDeployCommand": null,
+          "region": null,
+          "registryCredentials": null,
+          "requiredMountPath": null,
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "runtime": "V2",
+          "sleepApplication": false,
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1",
+          "useLegacyStacker": false
+        }
+      },
+      "volumeMounts": []
+    }
+  },
+  {
+    "id": "81765620-dbfb-46d7-8936-81a54a34e10d",
+    "status": "FAILED",
+    "createdAt": "2026-08-10T10:05:17.676Z",
+    "meta": {
+      "branch": "main",
+      "buildOnly": false,
+      "commitAuthor": "izoo2003",
+      "commitHash": "165131f063a7d1c496f3306b7d15e489b8d0c5b9",
+      "commitMessage": "Fix WhatsApp QR scanning ΓÇö bridge returns raw PNG image.",
+      "configFile": "/backend/railway.toml",
+      "fileServiceManifest": {
+        "build": {
+          "builder": "NIXPACKS",
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1"
+        }
+      },
+      "ignoreWatchPatterns": true,
+      "logsV2": true,
+      "nixpacksProviders": [],
+      "patchId": "e6f16cd3-1c4a-44fd-9080-c7130bd2b31b",
+      "plan": "hobby",
+      "propertyFileMapping": {
+        "build.builder": "$.build.builder",
+        "build.watchPatterns": "$.build.watchPatterns",
+        "deploy.restartPolicyMaxRetries": "$.deploy.restartPolicyMaxRetries",
+        "deploy.restartPolicyType": "$.deploy.restartPolicyType",
+        "deploy.startCommand": "$.deploy.startCommand"
+      },
+      "reason": "deploy",
+      "repo": "kafi-group/Kafi-Sales-Agent",
+      "rootDirectory": "/backend",
+      "runtime": "V2",
+      "serviceManifest": {
+        "build": {
+          "buildCommand": null,
+          "buildEnvironment": "V3",
+          "builder": "NIXPACKS",
+          "dockerfilePath": null,
+          "nixpacksConfigPath": "/backend/nixpacks.toml",
+          "nixpacksPlan": null,
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "cronSchedule": null,
+          "drainingSeconds": null,
+          "healthcheckPath": null,
+          "healthcheckTimeout": null,
+          "ipv6EgressEnabled": false,
+          "limitOverride": null,
+          "multiRegionConfig": {
+            "sfo": {
+              "numReplicas": 1
+            }
+          },
+          "numReplicas": 1,
+          "overlapSeconds": null,
+          "preDeployCommand": null,
+          "region": null,
+          "registryCredentials": null,
+          "requiredMountPath": null,
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "runtime": "V2",
+          "sleepApplication": false,
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1",
+          "useLegacyStacker": false
+        }
+      },
+      "volumeMounts": []
+    }
+  },
+  {
+    "id": "f686f520-8042-466a-b844-c4f3dd45e84f",
+    "status": "REMOVED",
+    "createdAt": "2026-08-10T09:34:28.390Z",
+    "meta": {
+      "buildOnly": false,
+      "cliAgentSessionId": "c38680c6-5e52-403f-9fd9-c06495948c35",
+      "cliCaller": "cursor",
+      "configFile": "/backend/railway.toml",
+      "fileServiceManifest": {
+        "build": {
+          "builder": "NIXPACKS",
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1"
+        }
+      },
+      "imageDigest": "sha256:f408d737f0a4d5d0b6b02b90f5f2a6d286915ff74b27dd2f64140d333ad38c4d",
+      "logsV2": true,
+      "nixpacksProviders": [],
+      "propertyFileMapping": {
+        "build.builder": "$.build.builder",
+        "build.watchPatterns": "$.build.watchPatterns",
+        "deploy.restartPolicyMaxRetries": "$.deploy.restartPolicyMaxRetries",
+        "deploy.restartPolicyType": "$.deploy.restartPolicyType",
+        "deploy.startCommand": "$.deploy.startCommand"
+      },
+      "reason": "deploy",
+      "rootDirectory": "/backend",
+      "runtime": "V2",
+      "serviceManifest": {
+        "build": {
+          "buildCommand": null,
+          "buildEnvironment": "V3",
+          "builder": "NIXPACKS",
+          "dockerfilePath": null,
+          "nixpacksConfigPath": "/backend/nixpacks.toml",
+          "nixpacksPlan": null,
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "cronSchedule": null,
+          "drainingSeconds": null,
+          "healthcheckPath": null,
+          "healthcheckTimeout": null,
+          "ipv6EgressEnabled": false,
+          "limitOverride": null,
+          "multiRegionConfig": {
+            "sfo": {
+              "numReplicas": 1
+            }
+          },
+          "numReplicas": 1,
+          "overlapSeconds": null,
+          "preDeployCommand": null,
+          "region": null,
+          "registryCredentials": null,
+          "requiredMountPath": null,
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "runtime": "V2",
+          "sleepApplication": false,
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1",
+          "useLegacyStacker": false
+        }
+      },
+      "volumeMounts": []
+    }
+  },
+  {
+    "id": "0f64c0da-192d-47d2-8c9b-2e2ea5181488",
+    "status": "FAILED",
+    "createdAt": "2026-08-10T09:31:40.768Z",
+    "meta": {
+      "buildOnly": false,
+      "cliAgentSessionId": "c38680c6-5e52-403f-9fd9-c06495948c35",
+      "cliCaller": "cursor",
+      "configFile": "/railway.toml",
+      "fileServiceManifest": {
+        "build": {
+          "builder": "NIXPACKS",
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1"
+        }
+      },
+      "logsV2": true,
+      "nixpacksProviders": [],
+      "propertyFileMapping": {
+        "build.builder": "$.build.builder",
+        "build.watchPatterns": "$.build.watchPatterns",
+        "deploy.restartPolicyMaxRetries": "$.deploy.restartPolicyMaxRetries",
+        "deploy.restartPolicyType": "$.deploy.restartPolicyType",
+        "deploy.startCommand": "$.deploy.startCommand"
+      },
+      "reason": "deploy",
+      "rootDirectory": "/backend",
+      "runtime": "V2",
+      "serviceManifest": {
+        "build": {
+          "buildCommand": null,
+          "buildEnvironment": "V3",
+          "builder": "NIXPACKS",
+          "dockerfilePath": null,
+          "nixpacksConfigPath": null,
+          "nixpacksPlan": null,
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "cronSchedule": null,
+          "drainingSeconds": null,
+          "healthcheckPath": null,
+          "healthcheckTimeout": null,
+          "ipv6EgressEnabled": false,
+          "limitOverride": null,
+          "multiRegionConfig": {
+            "sfo": {
+              "numReplicas": 1
+            }
+          },
+          "numReplicas": 1,
+          "overlapSeconds": null,
+          "preDeployCommand": null,
+          "region": null,
+          "registryCredentials": null,
+          "requiredMountPath": null,
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "runtime": "V2",
+          "sleepApplication": false,
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1",
+          "useLegacyStacker": false
+        }
+      },
+      "volumeMounts": []
+    }
+  },
+  {
+    "id": "105f061f-253f-4705-a2f7-83e57bd1b90b",
+    "status": "FAILED",
+    "createdAt": "2026-08-10T09:31:40.648Z",
+    "meta": {
+      "branch": "main",
+      "buildOnly": false,
+      "commitAuthor": "kafi-group",
+      "commitHash": "165131f063a7d1c496f3306b7d15e489b8d0c5b9",
+      "commitMessage": "Fix WhatsApp QR scanning ΓÇö bridge returns raw PNG image.",
+      "configFile": "/backend/railway.toml",
+      "fileServiceManifest": {
+        "build": {
+          "builder": "NIXPACKS",
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1"
+        }
+      },
+      "logsV2": true,
+      "nixpacksProviders": [],
+      "plan": "hobby",
+      "propertyFileMapping": {
+        "build.builder": "$.build.builder",
+        "build.watchPatterns": "$.build.watchPatterns",
+        "deploy.restartPolicyMaxRetries": "$.deploy.restartPolicyMaxRetries",
+        "deploy.restartPolicyType": "$.deploy.restartPolicyType",
+        "deploy.startCommand": "$.deploy.startCommand"
+      },
+      "reason": "deploy",
+      "repo": "kafi-group/Kafi-Sales-Agent",
+      "rootDirectory": "/backend",
+      "runtime": "V2",
+      "serviceManifest": {
+        "build": {
+          "buildCommand": null,
+          "buildEnvironment": "V3",
+          "builder": "NIXPACKS",
+          "dockerfilePath": null,
+          "nixpacksConfigPath": "/backend/nixpacks.toml",
+          "nixpacksPlan": null,
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "cronSchedule": null,
+          "drainingSeconds": null,
+          "healthcheckPath": null,
+          "healthcheckTimeout": null,
+          "ipv6EgressEnabled": false,
+          "limitOverride": null,
+          "multiRegionConfig": {
+            "sfo": {
+              "numReplicas": 1
+            }
+          },
+          "numReplicas": 1,
+          "overlapSeconds": null,
+          "preDeployCommand": null,
+          "region": null,
+          "registryCredentials": null,
+          "requiredMountPath": null,
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "runtime": "V2",
+          "sleepApplication": false,
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1",
+          "useLegacyStacker": false
+        }
+      },
+      "volumeMounts": []
+    }
+  },
+  {
+    "id": "9e2cc517-3ff3-4744-af7e-430c9e8f7dc0",
+    "status": "FAILED",
+    "createdAt": "2026-08-10T09:26:55.239Z",
+    "meta": {
+      "buildOnly": false,
+      "cliAgentSessionId": "c38680c6-5e52-403f-9fd9-c06495948c35",
+      "cliCaller": "cursor",
+      "configFile": "/railway.toml",
+      "fileServiceManifest": {
+        "build": {
+          "builder": "NIXPACKS",
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1"
+        }
+      },
+      "logsV2": true,
+      "nixpacksProviders": [],
+      "propertyFileMapping": {
+        "build.builder": "$.build.builder",
+        "build.watchPatterns": "$.build.watchPatterns",
+        "deploy.restartPolicyMaxRetries": "$.deploy.restartPolicyMaxRetries",
+        "deploy.restartPolicyType": "$.deploy.restartPolicyType",
+        "deploy.startCommand": "$.deploy.startCommand"
+      },
+      "reason": "deploy",
+      "rootDirectory": "/backend",
+      "runtime": "V2",
+      "serviceManifest": {
+        "build": {
+          "buildCommand": null,
+          "buildEnvironment": "V3",
+          "builder": "NIXPACKS",
+          "dockerfilePath": null,
+          "nixpacksConfigPath": null,
+          "nixpacksPlan": null,
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "cronSchedule": null,
+          "drainingSeconds": null,
+          "healthcheckPath": null,
+          "healthcheckTimeout": null,
+          "ipv6EgressEnabled": false,
+          "limitOverride": null,
+          "multiRegionConfig": {
+            "sfo": {
+              "numReplicas": 1
+            }
+          },
+          "numReplicas": 1,
+          "overlapSeconds": null,
+          "preDeployCommand": null,
+          "region": null,
+          "registryCredentials": null,
+          "requiredMountPath": null,
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "runtime": "V2",
+          "sleepApplication": false,
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1",
+          "useLegacyStacker": false
+        }
+      },
+      "volumeMounts": []
+    }
+  },
+  {
+    "id": "41efd095-e8dc-466b-a009-0cca50d2d3da",
+    "status": "FAILED",
+    "createdAt": "2026-08-10T09:26:51.312Z",
+    "meta": {
+      "branch": "main",
+      "buildOnly": false,
+      "commitAuthor": "kafi-group",
+      "commitHash": "f02470bae126fe6629349ba1f617f18230f4dd82",
+      "commitMessage": "Fix mail AI import error and WhatsApp bridge connected/QR handling.",
+      "configFile": "/backend/railway.toml",
+      "fileServiceManifest": {
+        "build": {
+          "builder": "NIXPACKS",
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1"
+        }
+      },
+      "logsV2": true,
+      "nixpacksProviders": [],
+      "plan": "hobby",
+      "propertyFileMapping": {
+        "build.builder": "$.build.builder",
+        "build.watchPatterns": "$.build.watchPatterns",
+        "deploy.restartPolicyMaxRetries": "$.deploy.restartPolicyMaxRetries",
+        "deploy.restartPolicyType": "$.deploy.restartPolicyType",
+        "deploy.startCommand": "$.deploy.startCommand"
+      },
+      "reason": "deploy",
+      "repo": "kafi-group/Kafi-Sales-Agent",
+      "rootDirectory": "/backend",
+      "runtime": "V2",
+      "serviceManifest": {
+        "build": {
+          "buildCommand": null,
+          "buildEnvironment": "V3",
+          "builder": "NIXPACKS",
+          "dockerfilePath": null,
+          "nixpacksConfigPath": "/backend/nixpacks.toml",
+          "nixpacksPlan": null,
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "cronSchedule": null,
+          "drainingSeconds": null,
+          "healthcheckPath": null,
+          "healthcheckTimeout": null,
+          "ipv6EgressEnabled": false,
+          "limitOverride": null,
+          "multiRegionConfig": {
+            "sfo": {
+              "numReplicas": 1
+            }
+          },
+          "numReplicas": 1,
+          "overlapSeconds": null,
+          "preDeployCommand": null,
+          "region": null,
+          "registryCredentials": null,
+          "requiredMountPath": null,
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "runtime": "V2",
+          "sleepApplication": false,
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1",
+          "useLegacyStacker": false
+        }
+      },
+      "volumeMounts": []
+    }
+  },
+  {
+    "id": "100a15d5-d5ee-46bd-b4b8-33071dd0de15",
+    "status": "FAILED",
+    "createdAt": "2026-08-10T07:48:36.915Z",
+    "meta": {
+      "branch": "main",
+      "buildOnly": false,
+      "commitAuthor": "kafi-group",
+      "commitHash": "9a991dd17f094983f03d6400f72aa7ae3e58c081",
+      "commitMessage": "Fix post-call remarks modal closing instantly on single calls.",
+      "configFile": "/backend/railway.toml",
+      "fileServiceManifest": {
+        "build": {
+          "builder": "NIXPACKS",
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1"
+        }
+      },
+      "logsV2": true,
+      "nixpacksProviders": [],
+      "plan": "hobby",
+      "propertyFileMapping": {
+        "build.builder": "$.build.builder",
+        "build.watchPatterns": "$.build.watchPatterns",
+        "deploy.restartPolicyMaxRetries": "$.deploy.restartPolicyMaxRetries",
+        "deploy.restartPolicyType": "$.deploy.restartPolicyType",
+        "deploy.startCommand": "$.deploy.startCommand"
+      },
+      "reason": "deploy",
+      "repo": "kafi-group/Kafi-Sales-Agent",
+      "rootDirectory": "/backend",
+      "runtime": "V2",
+      "serviceManifest": {
+        "build": {
+          "buildCommand": null,
+          "buildEnvironment": "V3",
+          "builder": "NIXPACKS",
+          "dockerfilePath": null,
+          "nixpacksConfigPath": "/backend/nixpacks.toml",
+          "nixpacksPlan": null,
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "cronSchedule": null,
+          "drainingSeconds": null,
+          "healthcheckPath": null,
+          "healthcheckTimeout": null,
+          "ipv6EgressEnabled": false,
+          "limitOverride": null,
+          "multiRegionConfig": {
+            "sfo": {
+              "numReplicas": 1
+            }
+          },
+          "numReplicas": 1,
+          "overlapSeconds": null,
+          "preDeployCommand": null,
+          "region": null,
+          "registryCredentials": null,
+          "requiredMountPath": null,
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "runtime": "V2",
+          "sleepApplication": false,
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1",
+          "useLegacyStacker": false
+        }
+      },
+      "volumeMounts": []
+    }
+  },
+  {
+    "id": "f8623308-f7e9-494f-ab98-815be355c7b0",
+    "status": "REMOVED",
+    "createdAt": "2026-08-10T07:43:35.940Z",
+    "meta": {
+      "buildOnly": false,
+      "cliAgentSessionId": "c38680c6-5e52-403f-9fd9-c06495948c35",
+      "cliCaller": "cursor",
+      "configFile": "/backend/railway.toml",
+      "fileServiceManifest": {
+        "build": {
+          "builder": "NIXPACKS",
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1"
+        }
+      },
+      "imageDigest": "sha256:d1157e5071e65e11550cea525302ea96c4c4f3a6a581a09a8d7b8218d1bb78fe",
+      "logsV2": true,
+      "nixpacksProviders": [],
+      "propertyFileMapping": {
+        "build.builder": "$.build.builder",
+        "build.watchPatterns": "$.build.watchPatterns",
+        "deploy.restartPolicyMaxRetries": "$.deploy.restartPolicyMaxRetries",
+        "deploy.restartPolicyType": "$.deploy.restartPolicyType",
+        "deploy.startCommand": "$.deploy.startCommand"
+      },
+      "reason": "deploy",
+      "rootDirectory": "/backend",
+      "runtime": "V2",
+      "serviceManifest": {
+        "build": {
+          "buildCommand": null,
+          "buildEnvironment": "V3",
+          "builder": "NIXPACKS",
+          "dockerfilePath": null,
+          "nixpacksConfigPath": "/backend/nixpacks.toml",
+          "nixpacksPlan": null,
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "cronSchedule": null,
+          "drainingSeconds": null,
+          "healthcheckPath": null,
+          "healthcheckTimeout": null,
+          "ipv6EgressEnabled": false,
+          "limitOverride": null,
+          "multiRegionConfig": {
+            "sfo": {
+              "numReplicas": 1
+            }
+          },
+          "numReplicas": 1,
+          "overlapSeconds": null,
+          "preDeployCommand": null,
+          "region": null,
+          "registryCredentials": null,
+          "requiredMountPath": null,
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "runtime": "V2",
+          "sleepApplication": false,
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1",
+          "useLegacyStacker": false
+        }
+      },
+      "volumeMounts": []
+    }
+  },
+  {
+    "id": "ec3fc8c3-38ee-4d79-8877-089cd4d3fa00",
+    "status": "FAILED",
+    "createdAt": "2026-08-10T07:43:30.018Z",
+    "meta": {
+      "branch": "main",
+      "buildOnly": false,
+      "commitAuthor": "kafi-group",
+      "commitHash": "fb3d485625f364ba81ed8f3340ce6614f58a7e32",
+      "commitMessage": "Add inbox pagination, mail AI search, and WhatsApp Personal bridge.",
+      "configFile": "/backend/railway.toml",
+      "fileServiceManifest": {
+        "build": {
+          "builder": "NIXPACKS",
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1"
+        }
+      },
+      "logsV2": true,
+      "nixpacksProviders": [],
+      "plan": "hobby",
+      "propertyFileMapping": {
+        "build.builder": "$.build.builder",
+        "build.watchPatterns": "$.build.watchPatterns",
+        "deploy.restartPolicyMaxRetries": "$.deploy.restartPolicyMaxRetries",
+        "deploy.restartPolicyType": "$.deploy.restartPolicyType",
+        "deploy.startCommand": "$.deploy.startCommand"
+      },
+      "reason": "deploy",
+      "repo": "kafi-group/Kafi-Sales-Agent",
+      "rootDirectory": "/backend",
+      "runtime": "V2",
+      "serviceManifest": {
+        "build": {
+          "buildCommand": null,
+          "buildEnvironment": "V3",
+          "builder": "NIXPACKS",
+          "dockerfilePath": null,
+          "nixpacksConfigPath": "/backend/nixpacks.toml",
+          "nixpacksPlan": null,
+          "watchPatterns": [
+            "backend/**",
+            "frontend/**"
+          ]
+        },
+        "deploy": {
+          "cronSchedule": null,
+          "drainingSeconds": null,
+          "healthcheckPath": null,
+          "healthcheckTimeout": null,
+          "ipv6EgressEnabled": false,
+          "limitOverride": null,
+          "multiRegionConfig": {
+            "sfo": {
+              "numReplicas": 1
+            }
+          },
+          "numReplicas": 1,
+          "overlapSeconds": null,
+          "preDeployCommand": null,
+          "region": null,
+          "registryCredentials": null,
+          "requiredMountPath": null,
+          "restartPolicyMaxRetries": 10,
+          "restartPolicyType": "ON_FAILURE",
+          "runtime": "V2",
+          "sleepApplication": false,
+          "startCommand": "python -c \"from db.migrate import run_migrations; run_migrations()\" && KAFI_SKIP_LIFESPAN_MIGRATE=1 uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1",
+          "useLegacyStacker": false
+        }
+      },
+      "volumeMounts": []
+    }
+  }
+]

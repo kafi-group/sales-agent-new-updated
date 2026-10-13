@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 30" role="img" aria-label="Twilio">
+  <!-- Official Twilio mark: red circle with four white dots -->
+  <circle cx="15" cy="15" r="15" fill="#F22F46"/>
+  <circle cx="11.3" cy="11.3" r="3.1" fill="#fff"/>
+  <circle cx="18.7" cy="11.3" r="3.1" fill="#fff"/>
+  <circle cx="11.3" cy="18.7" r="3.1" fill="#fff"/>
+  <circle cx="18.7" cy="18.7" r="3.1" fill="#fff"/>
+</svg>

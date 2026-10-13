@@ -1,0 +1,12 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "npm start"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+[service]
+# Mount a volume at /data in the Railway UI so sessions survive redeploys.
+# Env: TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_BRIDGE_SECRET

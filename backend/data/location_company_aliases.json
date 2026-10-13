@@ -1,0 +1,19 @@
+{
+  "_comment": "Maps address/postcode/place fragments (lowercase) → real company names when company_name was stored as a location. Add rows anytime; Fix names reads this file on each run.",
+  "aliases": {
+    "coldharbour lane": "Tilda",
+    "sw9 8lq": "Tilda",
+    "sw9 8lf": "Tilda",
+    "veetee house": "Veetee",
+    "gt karnal rd": "Veetee",
+    "vpo larsauli": "Veetee",
+    "larsauli": "Veetee",
+    "weston centre": "Associated British Foods",
+    "w1k 4qy": "Associated British Foods",
+    "10 grosvenor street": "Associated British Foods",
+    "lancelot road": "Natco Foods",
+    "swan business park": "Swan",
+    "mk18 1tb": "Swan",
+    "osier way": "Swan"
+  }
+}

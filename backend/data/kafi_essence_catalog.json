@@ -1,0 +1,3171 @@
+{
+  "source": "ESSENCE ORDER SHEET.xlsx",
+  "company": "Kafi Commodities (Pvt.) Limited",
+  "brand": "ESSENCE",
+  "website": "https://www.kafi-group.com",
+  "shipment_port": "Karachi Port",
+  "product_count": 177,
+  "categories": {
+    "chutneys": 5,
+    "fried_onion": 7,
+    "himalayan_salt": 29,
+    "honey": 2,
+    "jams_jellies": 18,
+    "juices": 6,
+    "moringa_wellness": 14,
+    "other": 1,
+    "pastes": 14,
+    "pickles": 8,
+    "rusks": 5,
+    "sauces": 11,
+    "snacks_ingredients": 6,
+    "spices_masala": 32,
+    "vermicelli_desserts": 15,
+    "vinegar_water": 4
+  },
+  "category_buyer_keywords": {
+    "pickles": [
+      "pickle",
+      "achar",
+      "condiment",
+      "ethnic food",
+      "asian grocery"
+    ],
+    "chutneys": [
+      "chutney",
+      "condiment",
+      "indian food",
+      "asian sauce",
+      "halal food"
+    ],
+    "pastes": [
+      "garlic paste",
+      "ginger paste",
+      "cooking paste",
+      "curry"
+    ],
+    "sauces": [
+      "sauce",
+      "condiment",
+      "hot sauce",
+      "ethnic food"
+    ],
+    "himalayan_salt": [
+      "salt",
+      "himalayan",
+      "pink salt",
+      "gourmet",
+      "wellness",
+      "spices"
+    ],
+    "spices_masala": [
+      "spices",
+      "masala",
+      "seasoning",
+      "biryani",
+      "halal"
+    ],
+    "fried_onion": [
+      "fried onion",
+      "biryani",
+      "food ingredients"
+    ],
+    "vermicelli_desserts": [
+      "dessert",
+      "vermicelli",
+      "kunafa",
+      "confectionery",
+      "sweet"
+    ],
+    "rusks": [
+      "rusk",
+      "bakery",
+      "snacks"
+    ],
+    "jams_jellies": [
+      "jam",
+      "jelly",
+      "spread",
+      "breakfast"
+    ],
+    "honey": [
+      "honey",
+      "natural",
+      "wellness"
+    ],
+    "moringa_wellness": [
+      "moringa",
+      "wellness",
+      "tea",
+      "organic",
+      "health"
+    ],
+    "vinegar_water": [
+      "vinegar",
+      "rose water",
+      "kewra",
+      "cooking ingredients"
+    ],
+    "juices": [
+      "juice",
+      "beverage",
+      "drinks"
+    ],
+    "snacks_ingredients": [
+      "snacks",
+      "ingredients",
+      "food service"
+    ],
+    "rice": [
+      "rice",
+      "basmati",
+      "grains",
+      "staples",
+      "food importer"
+    ],
+    "other": [
+      "food",
+      "grocery",
+      "import"
+    ]
+  },
+  "products": [
+    {
+      "id": 1,
+      "sno": 1,
+      "name": "Mango pickle 1kg Pet Bottle",
+      "brand": "ESSENCE",
+      "category": "pickles",
+      "packaging": "1000 GMS X 6 PET BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "achar",
+        "asian grocery",
+        "condiment",
+        "ethnic food",
+        "mango",
+        "pet",
+        "pickle"
+      ]
+    },
+    {
+      "id": 2,
+      "sno": 2,
+      "name": "Mix pickle 1kg Pet Bottle",
+      "brand": "ESSENCE",
+      "category": "pickles",
+      "packaging": "1000 GMS X 6 PET BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "achar",
+        "asian grocery",
+        "condiment",
+        "ethnic food",
+        "mix",
+        "pet",
+        "pickle"
+      ]
+    },
+    {
+      "id": 3,
+      "sno": 3,
+      "name": "Lemon pickle 1kg Pet Bottle",
+      "brand": "ESSENCE",
+      "category": "pickles",
+      "packaging": "1000 GMS X 6 PET BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "achar",
+        "asian grocery",
+        "condiment",
+        "ethnic food",
+        "lemon",
+        "pet",
+        "pickle"
+      ]
+    },
+    {
+      "id": 4,
+      "sno": 4,
+      "name": "HYDERABADI pickle 1KG Pet Bottle",
+      "brand": "ESSENCE",
+      "category": "pickles",
+      "packaging": "1000 GMS X 6 PET BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "achar",
+        "asian grocery",
+        "condiment",
+        "ethnic food",
+        "hyderabadi",
+        "pet",
+        "pickle"
+      ]
+    },
+    {
+      "id": 5,
+      "sno": 5,
+      "name": "Essence Mango pickle 330g Glass Bottle",
+      "brand": "ESSENCE",
+      "category": "pickles",
+      "packaging": "330 GMS X 12 GLASS BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "achar",
+        "asian grocery",
+        "condiment",
+        "ethnic food",
+        "mango",
+        "pickle"
+      ]
+    },
+    {
+      "id": 6,
+      "sno": 6,
+      "name": "hyderabadi Pickle 330gm Glass Bottle",
+      "brand": "ESSENCE",
+      "category": "pickles",
+      "packaging": "330 gms x 12 glass bottle packed in master carton",
+      "match_keywords": [
+        "achar",
+        "asian grocery",
+        "condiment",
+        "ethnic food",
+        "hyderabadi",
+        "pickle"
+      ]
+    },
+    {
+      "id": 7,
+      "sno": 7,
+      "name": "Mix pickle 330g Glass Bottle",
+      "brand": "ESSENCE",
+      "category": "pickles",
+      "packaging": "330 GMS X 12 GLASS BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "achar",
+        "asian grocery",
+        "condiment",
+        "ethnic food",
+        "mix",
+        "pickle"
+      ]
+    },
+    {
+      "id": 8,
+      "sno": 8,
+      "name": "Lemon pickle 330g Glass Bottle",
+      "brand": "ESSENCE",
+      "category": "pickles",
+      "packaging": "330 GMS X 12 GLASS BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "achar",
+        "asian grocery",
+        "condiment",
+        "ethnic food",
+        "lemon",
+        "pickle"
+      ]
+    },
+    {
+      "id": 9,
+      "sno": 9,
+      "name": "Essence GREEN CHILLI CHUTNEY 330g Glass Bottle",
+      "brand": "ESSENCE",
+      "category": "chutneys",
+      "packaging": "330 GMS X 12 GLASS BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "asian sauce",
+        "chilli",
+        "chutney",
+        "condiment",
+        "green",
+        "halal food",
+        "indian food"
+      ]
+    },
+    {
+      "id": 10,
+      "sno": 10,
+      "name": "Essence MINT CHUTNEY 330g Glass Bottle",
+      "brand": "ESSENCE",
+      "category": "chutneys",
+      "packaging": "330 GMS X 12 GLASS BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "asian sauce",
+        "chutney",
+        "condiment",
+        "halal food",
+        "indian food",
+        "mint"
+      ]
+    },
+    {
+      "id": 11,
+      "sno": 11,
+      "name": "DATES & TAMARIND CHUTNEY 330 GMS",
+      "brand": "ESSENCE",
+      "category": "chutneys",
+      "packaging": "330 GMS X 12 GLASS BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "asian sauce",
+        "chutney",
+        "condiment",
+        "dates",
+        "gms",
+        "halal food",
+        "indian food",
+        "tamarind"
+      ]
+    },
+    {
+      "id": 12,
+      "sno": 12,
+      "name": "Essence PLUM CHUTNEY 330g Glass Bottle",
+      "brand": "ESSENCE",
+      "category": "chutneys",
+      "packaging": "330 GMS X 12 GLASS BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "asian sauce",
+        "chutney",
+        "condiment",
+        "halal food",
+        "indian food",
+        "plum"
+      ]
+    },
+    {
+      "id": 13,
+      "sno": 13,
+      "name": "Essence MANGO CHUTNEY 330g Glass Bottle",
+      "brand": "ESSENCE",
+      "category": "chutneys",
+      "packaging": "330 GMS X 12 GLASS BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "asian sauce",
+        "chutney",
+        "condiment",
+        "halal food",
+        "indian food",
+        "mango"
+      ]
+    },
+    {
+      "id": 14,
+      "sno": 14,
+      "name": "GARLIC PASTE",
+      "brand": "ESSENCE",
+      "category": "pastes",
+      "packaging": "1 KG X 6 PET JAR PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "cooking paste",
+        "curry",
+        "garlic",
+        "garlic paste",
+        "ginger paste",
+        "paste"
+      ]
+    },
+    {
+      "id": 15,
+      "sno": 15,
+      "name": "GINGER PASTE",
+      "brand": "ESSENCE",
+      "category": "pastes",
+      "packaging": "1 KG X 6 PET JAR PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "cooking paste",
+        "curry",
+        "garlic paste",
+        "ginger",
+        "ginger paste",
+        "paste"
+      ]
+    },
+    {
+      "id": 16,
+      "sno": 16,
+      "name": "GARLIC & GINGER PASTE",
+      "brand": "ESSENCE",
+      "category": "pastes",
+      "packaging": "1 KG X 6 PET JAR PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "cooking paste",
+        "curry",
+        "garlic",
+        "garlic paste",
+        "ginger",
+        "ginger paste",
+        "paste"
+      ]
+    },
+    {
+      "id": 17,
+      "sno": 17,
+      "name": "GARLIC PASTE",
+      "brand": "ESSENCE",
+      "category": "pastes",
+      "packaging": "750 GMS X 12 PET JAR PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "cooking paste",
+        "curry",
+        "garlic",
+        "garlic paste",
+        "ginger paste",
+        "paste"
+      ]
+    },
+    {
+      "id": 18,
+      "sno": 18,
+      "name": "GINGER PASTE",
+      "brand": "ESSENCE",
+      "category": "pastes",
+      "packaging": "750 GMS X 12 PET JAR PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "cooking paste",
+        "curry",
+        "garlic paste",
+        "ginger",
+        "ginger paste",
+        "paste"
+      ]
+    },
+    {
+      "id": 19,
+      "sno": 19,
+      "name": "GARLIC & GINGER PASTE",
+      "brand": "ESSENCE",
+      "category": "pastes",
+      "packaging": "750 GMS X 12 PET JAR PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "cooking paste",
+        "curry",
+        "garlic",
+        "garlic paste",
+        "ginger",
+        "ginger paste",
+        "paste"
+      ]
+    },
+    {
+      "id": 20,
+      "sno": 20,
+      "name": "GARLIC PASTE 330g Glass Bottle",
+      "brand": "ESSENCE",
+      "category": "pastes",
+      "packaging": "330 GMS X 12 GLASS BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "cooking paste",
+        "curry",
+        "garlic",
+        "garlic paste",
+        "ginger paste",
+        "paste"
+      ]
+    },
+    {
+      "id": 21,
+      "sno": 21,
+      "name": "Ginger PASTE 330g Glass Bottle",
+      "brand": "ESSENCE",
+      "category": "pastes",
+      "packaging": "330 GMS X 12 GLASS BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "cooking paste",
+        "curry",
+        "garlic paste",
+        "ginger",
+        "ginger paste",
+        "paste"
+      ]
+    },
+    {
+      "id": 22,
+      "sno": 22,
+      "name": "Ginger & Garlic Mix PASTE 330g Glass Bottle",
+      "brand": "ESSENCE",
+      "category": "pastes",
+      "packaging": "330 GMS X 12 GLASS BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "cooking paste",
+        "curry",
+        "garlic",
+        "garlic paste",
+        "ginger",
+        "ginger paste",
+        "mix",
+        "paste"
+      ]
+    },
+    {
+      "id": 23,
+      "sno": 23,
+      "name": "ONION PASTE 330g Glass Bottle",
+      "brand": "ESSENCE",
+      "category": "pastes",
+      "packaging": "330 GMS X 12 GLASS BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "cooking paste",
+        "curry",
+        "garlic paste",
+        "ginger paste",
+        "onion",
+        "paste"
+      ]
+    },
+    {
+      "id": 24,
+      "sno": 24,
+      "name": "PAPAYA PASTE 330g Glass Bottle",
+      "brand": "ESSENCE",
+      "category": "pastes",
+      "packaging": "330 GMS X 12 GLASS BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "cooking paste",
+        "curry",
+        "garlic paste",
+        "ginger paste",
+        "papaya",
+        "paste"
+      ]
+    },
+    {
+      "id": 25,
+      "sno": 25,
+      "name": "GREEN CHILLI PASTE 330g Glass Bottle",
+      "brand": "ESSENCE",
+      "category": "pastes",
+      "packaging": "330 GMS X 12 GLASS BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "chilli",
+        "cooking paste",
+        "curry",
+        "garlic paste",
+        "ginger paste",
+        "green",
+        "paste"
+      ]
+    },
+    {
+      "id": 26,
+      "sno": 26,
+      "name": "RED CHILLI PASTE 330g Glass Bottle",
+      "brand": "ESSENCE",
+      "category": "pastes",
+      "packaging": "330 GMS X 12 GLASS BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "chilli",
+        "cooking paste",
+        "curry",
+        "garlic paste",
+        "ginger paste",
+        "paste",
+        "red"
+      ]
+    },
+    {
+      "id": 27,
+      "sno": 27,
+      "name": "PERI PERI HOT SAUCE 300 GMS",
+      "brand": "ESSENCE",
+      "category": "sauces",
+      "packaging": "300 GMS  X 12 GLASS BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "condiment",
+        "ethnic food",
+        "gms",
+        "hot",
+        "hot sauce",
+        "peri",
+        "sauce"
+      ]
+    },
+    {
+      "id": 28,
+      "sno": 28,
+      "name": "MINT SAUCE 300 gms",
+      "brand": "ESSENCE",
+      "category": "sauces",
+      "packaging": "300 GMS  X 12 GLASS BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "condiment",
+        "ethnic food",
+        "gms",
+        "hot sauce",
+        "mint",
+        "sauce"
+      ]
+    },
+    {
+      "id": 29,
+      "sno": 29,
+      "name": "TAMARIND SAUCE 300 GMS",
+      "brand": "ESSENCE",
+      "category": "sauces",
+      "packaging": "300 GMS  X 12 GLASS BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "condiment",
+        "ethnic food",
+        "gms",
+        "hot sauce",
+        "sauce",
+        "tamarind"
+      ]
+    },
+    {
+      "id": 30,
+      "sno": 30,
+      "name": "GREEN CHILLI SAUCE 300 GMS",
+      "brand": "ESSENCE",
+      "category": "sauces",
+      "packaging": "300 GMS  X 12 GLASS BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "chilli",
+        "condiment",
+        "ethnic food",
+        "gms",
+        "green",
+        "hot sauce",
+        "sauce"
+      ]
+    },
+    {
+      "id": 31,
+      "sno": 31,
+      "name": "CHIPOTLE SAUCE 300 GMS",
+      "brand": "ESSENCE",
+      "category": "sauces",
+      "packaging": "300 GMS  X 12 GLASS BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "chipotle",
+        "condiment",
+        "ethnic food",
+        "gms",
+        "hot sauce",
+        "sauce"
+      ]
+    },
+    {
+      "id": 32,
+      "sno": 32,
+      "name": "ITALIAN PIZZA PASTA SAUCE 300 GMS",
+      "brand": "ESSENCE",
+      "category": "pastes",
+      "packaging": "300 GMS  X 12 GLASS BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "cooking paste",
+        "curry",
+        "garlic paste",
+        "ginger paste",
+        "gms",
+        "italian",
+        "pasta",
+        "pizza",
+        "sauce"
+      ]
+    },
+    {
+      "id": 33,
+      "sno": 33,
+      "name": "HONEY MUSTARD SAUCE 300 GMS",
+      "brand": "ESSENCE",
+      "category": "sauces",
+      "packaging": "300 GMS  X 12 GLASS BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "condiment",
+        "ethnic food",
+        "gms",
+        "honey",
+        "hot sauce",
+        "mustard",
+        "sauce"
+      ]
+    },
+    {
+      "id": 34,
+      "sno": 34,
+      "name": "Himalayan Light Pink Salt Fine Grain - ESSENCE Specifications: Size: 0.25 ~ 1.0mm Color: Dark Pink Purity: 98% Usage: Edible",
+      "brand": "ESSENCE",
+      "category": "himalayan_salt",
+      "packaging": "500 GMS X 20 PCS FLIPTOP PET BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "color",
+        "dark",
+        "edible",
+        "fine",
+        "gourmet",
+        "grain",
+        "himalayan",
+        "light",
+        "pink",
+        "pink salt",
+        "purity",
+        "salt",
+        "size",
+        "specifications",
+        "spices",
+        "usage",
+        "wellness"
+      ]
+    },
+    {
+      "id": 35,
+      "sno": 35,
+      "name": "Himalayan Light Pink Salt Fine Grain - ESSENCE Specifications: Size: 0.25 ~ 1.0mm Color: Dark Pink Purity: 98% Usage: Edible",
+      "brand": "ESSENCE",
+      "category": "himalayan_salt",
+      "packaging": "800 GMS X 12 STANDY POUCHES PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "color",
+        "dark",
+        "edible",
+        "fine",
+        "gourmet",
+        "grain",
+        "himalayan",
+        "light",
+        "pink",
+        "pink salt",
+        "purity",
+        "salt",
+        "size",
+        "specifications",
+        "spices",
+        "usage",
+        "wellness"
+      ]
+    },
+    {
+      "id": 36,
+      "sno": 36,
+      "name": "Himalayan Light Pink Salt Coarse Grain - ESSENCE Specifications: Size: 2.0 ~ 5.0mm Color: Light Pink Purity: 98% Usage: Edibl",
+      "brand": "ESSENCE",
+      "category": "himalayan_salt",
+      "packaging": "800 GMS X 12 STANDY POUCHES PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "coarse",
+        "color",
+        "edibl",
+        "gourmet",
+        "grain",
+        "himalayan",
+        "light",
+        "pink",
+        "pink salt",
+        "purity",
+        "salt",
+        "size",
+        "specifications",
+        "spices",
+        "usage",
+        "wellness"
+      ]
+    },
+    {
+      "id": 37,
+      "sno": 37,
+      "name": "Himalayan Light Pink Salt Fine Grain - ESSENCE Specifications: Size: 0.25 ~ 1.0mm Color: Dark Pink Purity: 98% Usage: Edible",
+      "brand": "ESSENCE",
+      "category": "himalayan_salt",
+      "packaging": "1 KG X 9 SQUARE JAR PET BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "color",
+        "dark",
+        "edible",
+        "fine",
+        "gourmet",
+        "grain",
+        "himalayan",
+        "light",
+        "pink",
+        "pink salt",
+        "purity",
+        "salt",
+        "size",
+        "specifications",
+        "spices",
+        "usage",
+        "wellness"
+      ]
+    },
+    {
+      "id": 38,
+      "sno": 38,
+      "name": "Himalayan Light Pink Salt Coarse Grain - ESSENCE Specifications: Size: 2.0 ~ 5.0mm Color: Light Pink Purity: 98% Usage: Edibl",
+      "brand": "ESSENCE",
+      "category": "himalayan_salt",
+      "packaging": "1 KG X 9 SQUARE JAR PET BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "coarse",
+        "color",
+        "edibl",
+        "gourmet",
+        "grain",
+        "himalayan",
+        "light",
+        "pink",
+        "pink salt",
+        "purity",
+        "salt",
+        "size",
+        "specifications",
+        "spices",
+        "usage",
+        "wellness"
+      ]
+    },
+    {
+      "id": 39,
+      "sno": 39,
+      "name": "Himalayan Light Pink Salt Coarse Grain - ESSENCE Specifications: Size: 2.0 ~ 5.0mm Color: Light Pink Purity: 98% Usage: Edibl",
+      "brand": "ESSENCE",
+      "category": "himalayan_salt",
+      "packaging": "200 GMS X 12 GLASS GRINDER PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "coarse",
+        "color",
+        "edibl",
+        "gourmet",
+        "grain",
+        "himalayan",
+        "light",
+        "pink",
+        "pink salt",
+        "purity",
+        "salt",
+        "size",
+        "specifications",
+        "spices",
+        "usage",
+        "wellness"
+      ]
+    },
+    {
+      "id": 40,
+      "sno": 40,
+      "name": "Himalayan Light Pink Salt Fine Grain - ESSENCE Specifications: Size: 0.25 ~ 1.0mm Color: Dark Pink Purity: 98% Usage: Edible",
+      "brand": "ESSENCE",
+      "category": "himalayan_salt",
+      "packaging": "01 KG X 10 PENCIL JAR PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "color",
+        "dark",
+        "edible",
+        "fine",
+        "gourmet",
+        "grain",
+        "himalayan",
+        "light",
+        "pink",
+        "pink salt",
+        "purity",
+        "salt",
+        "size",
+        "specifications",
+        "spices",
+        "usage",
+        "wellness"
+      ]
+    },
+    {
+      "id": 41,
+      "sno": 41,
+      "name": "Himalayan Light Pink Salt Fine Grain - ESSENCE Specifications: Size: 0.25 ~ 1.0mm Color: Dark Pink Purity: 98% Usage: Edible",
+      "brand": "ESSENCE",
+      "category": "himalayan_salt",
+      "packaging": "500 GMS X 20 ROUND PET BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "color",
+        "dark",
+        "edible",
+        "fine",
+        "gourmet",
+        "grain",
+        "himalayan",
+        "light",
+        "pink",
+        "pink salt",
+        "purity",
+        "salt",
+        "size",
+        "specifications",
+        "spices",
+        "usage",
+        "wellness"
+      ]
+    },
+    {
+      "id": 42,
+      "sno": 42,
+      "name": "Himalayan Light Pink Salt Coarse Grain - ESSENCE Specifications: Size: 2.0 ~ 5.0mm Color: Light Pink Purity: 98% Usage: Edibl",
+      "brand": "ESSENCE",
+      "category": "himalayan_salt",
+      "packaging": "500 GMS X 20 ROUND PET BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "coarse",
+        "color",
+        "edibl",
+        "gourmet",
+        "grain",
+        "himalayan",
+        "light",
+        "pink",
+        "pink salt",
+        "purity",
+        "salt",
+        "size",
+        "specifications",
+        "spices",
+        "usage",
+        "wellness"
+      ]
+    },
+    {
+      "id": 43,
+      "sno": 43,
+      "name": "Himalayan Light Pink Salt Fine Grain - ESSENCE Specifications: Size: 0.25 ~ 1.0mm Color: Dark Pink Purity: 98% Usage: Edible",
+      "brand": "ESSENCE",
+      "category": "himalayan_salt",
+      "packaging": "110 GMS CONE SHAKER X 12 BOTTLES (12 BOTTLE X 8 SMALL CTN) PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "color",
+        "dark",
+        "edible",
+        "fine",
+        "gourmet",
+        "grain",
+        "himalayan",
+        "light",
+        "pink",
+        "pink salt",
+        "purity",
+        "salt",
+        "size",
+        "specifications",
+        "spices",
+        "usage",
+        "wellness"
+      ]
+    },
+    {
+      "id": 44,
+      "sno": 44,
+      "name": "Himalayan Light Pink Salt Fine Grain - ESSENCE Specifications: Size: 0.25 ~ 1.0mm Color: Dark Pink Purity: 98% Usage: Edible",
+      "brand": "ESSENCE",
+      "category": "himalayan_salt",
+      "packaging": "300 GMS CONE SHAKER X 6 BOTTLES (6 BOTTLE X 5 SMALL CTN) PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "color",
+        "dark",
+        "edible",
+        "fine",
+        "gourmet",
+        "grain",
+        "himalayan",
+        "light",
+        "pink",
+        "pink salt",
+        "purity",
+        "salt",
+        "size",
+        "specifications",
+        "spices",
+        "usage",
+        "wellness"
+      ]
+    },
+    {
+      "id": 45,
+      "sno": 45,
+      "name": "Himalayan Light Pink Salt Fine Grain - ESSENCE Specifications: Size: 0.25 ~ 1.0mm Color: Dark Pink Purity: 98% Usage: Edible",
+      "brand": "ESSENCE",
+      "category": "himalayan_salt",
+      "packaging": "700 GMS CONE SHAKER X 14 BOTTLES PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "color",
+        "dark",
+        "edible",
+        "fine",
+        "gourmet",
+        "grain",
+        "himalayan",
+        "light",
+        "pink",
+        "pink salt",
+        "purity",
+        "salt",
+        "size",
+        "specifications",
+        "spices",
+        "usage",
+        "wellness"
+      ]
+    },
+    {
+      "id": 46,
+      "sno": 46,
+      "name": "Himalayan Light Pink Salt Coarse Grain - ESSENCE Specifications: Size: 2.0 ~ 5.0mm Color: Dark/Light Pink Purity: 98% Usage: Edible",
+      "brand": "ESSENCE",
+      "category": "himalayan_salt",
+      "packaging": "110 GMS ACRYLIC GRINDER X 6 BOTTLES (6 BOTTLE X 8 SMALL CTN) PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "coarse",
+        "color",
+        "dark",
+        "edible",
+        "gourmet",
+        "grain",
+        "himalayan",
+        "light",
+        "pink",
+        "pink salt",
+        "purity",
+        "salt",
+        "size",
+        "specifications",
+        "spices",
+        "usage",
+        "wellness"
+      ]
+    },
+    {
+      "id": 47,
+      "sno": 47,
+      "name": "Italian Herbs SALT",
+      "brand": "ESSENCE",
+      "category": "himalayan_salt",
+      "packaging": "200 GMS X 24 PET GRINDER PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "gourmet",
+        "herbs",
+        "himalayan",
+        "italian",
+        "pink salt",
+        "salt",
+        "spices",
+        "wellness"
+      ]
+    },
+    {
+      "id": 48,
+      "sno": 48,
+      "name": "Citrus Salt",
+      "brand": "ESSENCE",
+      "category": "himalayan_salt",
+      "packaging": "200 GMS X 24 PET GRINDER PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "citrus",
+        "gourmet",
+        "himalayan",
+        "pink salt",
+        "salt",
+        "spices",
+        "wellness"
+      ]
+    },
+    {
+      "id": 49,
+      "sno": 49,
+      "name": "Spicy Salt",
+      "brand": "ESSENCE",
+      "category": "himalayan_salt",
+      "packaging": "200 GMS X 24 PET GRINDER PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "gourmet",
+        "himalayan",
+        "pink salt",
+        "salt",
+        "spices",
+        "spicy",
+        "wellness"
+      ]
+    },
+    {
+      "id": 50,
+      "sno": 50,
+      "name": "Garlic Salt",
+      "brand": "ESSENCE",
+      "category": "himalayan_salt",
+      "packaging": "200 GMS X 24 PET GRINDER PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "garlic",
+        "gourmet",
+        "himalayan",
+        "pink salt",
+        "salt",
+        "spices",
+        "wellness"
+      ]
+    },
+    {
+      "id": 51,
+      "sno": 51,
+      "name": "Smoked Salt",
+      "brand": "ESSENCE",
+      "category": "himalayan_salt",
+      "packaging": "200 GMS X 24 PET GRINDER PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "gourmet",
+        "himalayan",
+        "pink salt",
+        "salt",
+        "smoked",
+        "spices",
+        "wellness"
+      ]
+    },
+    {
+      "id": 52,
+      "sno": 52,
+      "name": "Coarse Salt",
+      "brand": "ESSENCE",
+      "category": "himalayan_salt",
+      "packaging": "200 GMS X 24 PET GRINDER PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "coarse",
+        "gourmet",
+        "himalayan",
+        "pink salt",
+        "salt",
+        "spices",
+        "wellness"
+      ]
+    },
+    {
+      "id": 53,
+      "sno": 53,
+      "name": "Himalayan Black Salt Fine",
+      "brand": "ESSENCE",
+      "category": "himalayan_salt",
+      "packaging": "1 KG X 9 SQUARE JAR PET BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "black",
+        "fine",
+        "gourmet",
+        "himalayan",
+        "pink salt",
+        "salt",
+        "spices",
+        "wellness"
+      ]
+    },
+    {
+      "id": 54,
+      "sno": 54,
+      "name": "Himalayan Black Salt Fine",
+      "brand": "ESSENCE",
+      "category": "himalayan_salt",
+      "packaging": "500 GMS X 20 PCS FLIPTOP PET BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "black",
+        "fine",
+        "gourmet",
+        "himalayan",
+        "pink salt",
+        "salt",
+        "spices",
+        "wellness"
+      ]
+    },
+    {
+      "id": 55,
+      "sno": 55,
+      "name": "Himalayan Black Salt Fine",
+      "brand": "ESSENCE",
+      "category": "himalayan_salt",
+      "packaging": "200 GMS X 20 PCS FLIPTOP PET BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "black",
+        "fine",
+        "gourmet",
+        "himalayan",
+        "pink salt",
+        "salt",
+        "spices",
+        "wellness"
+      ]
+    },
+    {
+      "id": 56,
+      "sno": 56,
+      "name": "Natural Sea Salt",
+      "brand": "ESSENCE",
+      "category": "himalayan_salt",
+      "packaging": "1 KG X 9 SQUARE JAR PET BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "gourmet",
+        "himalayan",
+        "natural",
+        "pink salt",
+        "salt",
+        "sea",
+        "spices",
+        "wellness"
+      ]
+    },
+    {
+      "id": 57,
+      "sno": 57,
+      "name": "Natural Sea Salt",
+      "brand": "ESSENCE",
+      "category": "himalayan_salt",
+      "packaging": "500 GMS X 20 PCS FLIPTOP PET BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "gourmet",
+        "himalayan",
+        "natural",
+        "pink salt",
+        "salt",
+        "sea",
+        "spices",
+        "wellness"
+      ]
+    },
+    {
+      "id": 58,
+      "sno": 58,
+      "name": "Natural Sea Salt",
+      "brand": "ESSENCE",
+      "category": "himalayan_salt",
+      "packaging": "200 GMS X 20 PCS FLIPTOP PET BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "gourmet",
+        "himalayan",
+        "natural",
+        "pink salt",
+        "salt",
+        "sea",
+        "spices",
+        "wellness"
+      ]
+    },
+    {
+      "id": 59,
+      "sno": 59,
+      "name": "Natural Sea Salt",
+      "brand": "ESSENCE",
+      "category": "himalayan_salt",
+      "packaging": "1KG X 12 POUCH PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "gourmet",
+        "himalayan",
+        "natural",
+        "pink salt",
+        "salt",
+        "sea",
+        "spices",
+        "wellness"
+      ]
+    },
+    {
+      "id": 60,
+      "sno": 60,
+      "name": "Natural Sea Salt",
+      "brand": "ESSENCE",
+      "category": "himalayan_salt",
+      "packaging": "500 GMS X 24 POUCH PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "gourmet",
+        "himalayan",
+        "natural",
+        "pink salt",
+        "salt",
+        "sea",
+        "spices",
+        "wellness"
+      ]
+    },
+    {
+      "id": 61,
+      "sno": 61,
+      "name": "HIMALAYAN PINK SALT IODIZED",
+      "brand": "ESSENCE",
+      "category": "himalayan_salt",
+      "packaging": "1 KG X 9 SQUARE JAR PET BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "gourmet",
+        "himalayan",
+        "iodized",
+        "pink",
+        "pink salt",
+        "salt",
+        "spices",
+        "wellness"
+      ]
+    },
+    {
+      "id": 62,
+      "sno": 62,
+      "name": "HIMALAYAN PINK SALT IODIZED",
+      "brand": "ESSENCE",
+      "category": "himalayan_salt",
+      "packaging": "500 GMS X 20 PCS FLIPTOP PET BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "gourmet",
+        "himalayan",
+        "iodized",
+        "pink",
+        "pink salt",
+        "salt",
+        "spices",
+        "wellness"
+      ]
+    },
+    {
+      "id": 63,
+      "sno": 63,
+      "name": "U SHAPE VERMICELLi",
+      "brand": "ESSENCE",
+      "category": "vermicelli_desserts",
+      "packaging": "150 GMS X 48 POLYTHENE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "confectionery",
+        "dessert",
+        "kunafa",
+        "shape",
+        "sweet",
+        "vermicelli"
+      ]
+    },
+    {
+      "id": 64,
+      "sno": 64,
+      "name": "COLOUR VERMICELLi",
+      "brand": "ESSENCE",
+      "category": "vermicelli_desserts",
+      "packaging": "200 GMS X 48 POLYTHENE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "colour",
+        "confectionery",
+        "dessert",
+        "kunafa",
+        "sweet",
+        "vermicelli"
+      ]
+    },
+    {
+      "id": 65,
+      "sno": 65,
+      "name": "KUNAFA",
+      "brand": "ESSENCE",
+      "category": "vermicelli_desserts",
+      "packaging": "200 GMS X 24 POUCH PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "confectionery",
+        "dessert",
+        "kunafa",
+        "sweet",
+        "vermicelli"
+      ]
+    },
+    {
+      "id": 66,
+      "sno": 66,
+      "name": "PHENNi",
+      "brand": "ESSENCE",
+      "category": "other",
+      "packaging": "200 GMS X 24 POUCH PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "food",
+        "grocery",
+        "import",
+        "phenni"
+      ]
+    },
+    {
+      "id": 67,
+      "sno": 67,
+      "name": "FRIED ONION PREMIUM QUALITY",
+      "brand": "ESSENCE",
+      "category": "fried_onion",
+      "packaging": "100 GMS X 20 BOTTLES IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "food ingredients",
+        "fried",
+        "fried onion",
+        "onion",
+        "premium",
+        "quality"
+      ]
+    },
+    {
+      "id": 68,
+      "sno": 68,
+      "name": "FRIED ONION PREMIUM QUALITY",
+      "brand": "ESSENCE",
+      "category": "fried_onion",
+      "packaging": "100 GMS X 48 POUCHES IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "food ingredients",
+        "fried",
+        "fried onion",
+        "onion",
+        "premium",
+        "quality"
+      ]
+    },
+    {
+      "id": 69,
+      "sno": 69,
+      "name": "FRIED ONION PREMIUM QUALITY",
+      "brand": "ESSENCE",
+      "category": "fried_onion",
+      "packaging": "200 GMS X 48 POUCHES IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "food ingredients",
+        "fried",
+        "fried onion",
+        "onion",
+        "premium",
+        "quality"
+      ]
+    },
+    {
+      "id": 70,
+      "sno": 70,
+      "name": "FRIED ONION PREMIUM QUALITY",
+      "brand": "ESSENCE",
+      "category": "fried_onion",
+      "packaging": "400 GMS X 24 POUCH PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "food ingredients",
+        "fried",
+        "fried onion",
+        "onion",
+        "premium",
+        "quality"
+      ]
+    },
+    {
+      "id": 71,
+      "sno": 71,
+      "name": "FRIED ONION PREMIUM QUALITY",
+      "brand": "ESSENCE",
+      "category": "fried_onion",
+      "packaging": "1 KG X 10 POUCH PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "food ingredients",
+        "fried",
+        "fried onion",
+        "onion",
+        "premium",
+        "quality"
+      ]
+    },
+    {
+      "id": 72,
+      "sno": 72,
+      "name": "FRIED ONION PREMIUM QUALITY",
+      "brand": "ESSENCE",
+      "category": "fried_onion",
+      "packaging": "4.5 KG X 2 POLY BAG PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "food ingredients",
+        "fried",
+        "fried onion",
+        "onion",
+        "premium",
+        "quality"
+      ]
+    },
+    {
+      "id": 73,
+      "sno": 73,
+      "name": "FRIED ONION PREMIUM QUALITY",
+      "brand": "ESSENCE",
+      "category": "fried_onion",
+      "packaging": "5 KG X 2 POLY BAG PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "food ingredients",
+        "fried",
+        "fried onion",
+        "onion",
+        "premium",
+        "quality"
+      ]
+    },
+    {
+      "id": 74,
+      "sno": 74,
+      "name": "MORINGA LEAF POWDER",
+      "brand": "ESSENCE",
+      "category": "spices_masala",
+      "packaging": "250 GMS X 24 POUCH PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "halal",
+        "leaf",
+        "masala",
+        "moringa",
+        "powder",
+        "seasoning",
+        "spices"
+      ]
+    },
+    {
+      "id": 75,
+      "sno": 75,
+      "name": "MORINGA CINNAMON TEA",
+      "brand": "ESSENCE",
+      "category": "moringa_wellness",
+      "packaging": "25 TEA POUCHES PACKED IN SMALL BOX , 24 SMALL BOX PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "cinnamon",
+        "health",
+        "moringa",
+        "organic",
+        "tea",
+        "wellness"
+      ]
+    },
+    {
+      "id": 76,
+      "sno": 76,
+      "name": "MORINGA FENNEL & CARDAMOM TEA",
+      "brand": "ESSENCE",
+      "category": "moringa_wellness",
+      "packaging": "25 TEA POUCHES PACKED IN SMALL BOX , 24 SMALL BOX PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "cardamom",
+        "fennel",
+        "health",
+        "moringa",
+        "organic",
+        "tea",
+        "wellness"
+      ]
+    },
+    {
+      "id": 77,
+      "sno": 77,
+      "name": "MORINGA MINT TEA",
+      "brand": "ESSENCE",
+      "category": "moringa_wellness",
+      "packaging": "25 TEA POUCHES PACKED IN SMALL BOX , 24 SMALL BOX PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "health",
+        "mint",
+        "moringa",
+        "organic",
+        "tea",
+        "wellness"
+      ]
+    },
+    {
+      "id": 78,
+      "sno": 78,
+      "name": "MORINGA CARDAMOM TEA",
+      "brand": "ESSENCE",
+      "category": "moringa_wellness",
+      "packaging": "25 TEA POUCHES PACKED IN SMALL BOX , 24 SMALL BOX PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "cardamom",
+        "health",
+        "moringa",
+        "organic",
+        "tea",
+        "wellness"
+      ]
+    },
+    {
+      "id": 79,
+      "sno": 79,
+      "name": "MORINGA GINGER TEA",
+      "brand": "ESSENCE",
+      "category": "moringa_wellness",
+      "packaging": "25 TEA POUCHES PACKED IN SMALL BOX , 24 SMALL BOX PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "ginger",
+        "health",
+        "moringa",
+        "organic",
+        "tea",
+        "wellness"
+      ]
+    },
+    {
+      "id": 80,
+      "sno": 80,
+      "name": "MORINGA BITTER GROUND TEA",
+      "brand": "ESSENCE",
+      "category": "moringa_wellness",
+      "packaging": "25 TEA POUCHES PACKED IN SMALL BOX , 24 SMALL BOX PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "bitter",
+        "ground",
+        "health",
+        "moringa",
+        "organic",
+        "tea",
+        "wellness"
+      ]
+    },
+    {
+      "id": 81,
+      "sno": 81,
+      "name": "MORINGA CHAMOMILE TEA",
+      "brand": "ESSENCE",
+      "category": "moringa_wellness",
+      "packaging": "25 TEA POUCHES PACKED IN SMALL BOX , 24 SMALL BOX PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "chamomile",
+        "health",
+        "moringa",
+        "organic",
+        "tea",
+        "wellness"
+      ]
+    },
+    {
+      "id": 82,
+      "sno": 82,
+      "name": "MORINGA PEPPER MINT TEA",
+      "brand": "ESSENCE",
+      "category": "moringa_wellness",
+      "packaging": "25 TEA POUCHES PACKED IN SMALL BOX , 24 SMALL BOX PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "health",
+        "mint",
+        "moringa",
+        "organic",
+        "pepper",
+        "tea",
+        "wellness"
+      ]
+    },
+    {
+      "id": 83,
+      "sno": 83,
+      "name": "MORINGA SHAMPOO",
+      "brand": "ESSENCE",
+      "category": "moringa_wellness",
+      "packaging": "200 ML EACH X 12 PCS PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "health",
+        "moringa",
+        "organic",
+        "shampoo",
+        "tea",
+        "wellness"
+      ]
+    },
+    {
+      "id": 84,
+      "sno": 84,
+      "name": "MORINGA SEED OIL",
+      "brand": "ESSENCE",
+      "category": "moringa_wellness",
+      "packaging": "40 ML EACH X 12 PCS PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "health",
+        "moringa",
+        "oil",
+        "organic",
+        "seed",
+        "tea",
+        "wellness"
+      ]
+    },
+    {
+      "id": 85,
+      "sno": 85,
+      "name": "MORINGA FACE SERUM",
+      "brand": "ESSENCE",
+      "category": "moringa_wellness",
+      "packaging": "20 ML EACH X 12 PCS PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "face",
+        "health",
+        "moringa",
+        "organic",
+        "serum",
+        "tea",
+        "wellness"
+      ]
+    },
+    {
+      "id": 86,
+      "sno": 86,
+      "name": "MORINGA HAIR OIL",
+      "brand": "ESSENCE",
+      "category": "moringa_wellness",
+      "packaging": "120 ML EACH X 12 PCS PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "hair",
+        "health",
+        "moringa",
+        "oil",
+        "organic",
+        "tea",
+        "wellness"
+      ]
+    },
+    {
+      "id": 87,
+      "sno": 87,
+      "name": "BOMBAY BIRYANI MASALA",
+      "brand": "ESSENCE",
+      "category": "spices_masala",
+      "packaging": "65 GMS X 48 PKTS PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "bombay",
+        "halal",
+        "masala",
+        "seasoning",
+        "spices"
+      ]
+    },
+    {
+      "id": 88,
+      "sno": 88,
+      "name": "SINDHI BIRYANI MASALA",
+      "brand": "ESSENCE",
+      "category": "spices_masala",
+      "packaging": "65 GMS X 48 PKTS PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "halal",
+        "masala",
+        "seasoning",
+        "sindhi",
+        "spices"
+      ]
+    },
+    {
+      "id": 89,
+      "sno": 89,
+      "name": "PINJABI YAKHNI PULAO MASALA",
+      "brand": "ESSENCE",
+      "category": "spices_masala",
+      "packaging": "65 GMS X 48 PKTS PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "halal",
+        "masala",
+        "pinjabi",
+        "pulao",
+        "seasoning",
+        "spices",
+        "yakhni"
+      ]
+    },
+    {
+      "id": 90,
+      "sno": 90,
+      "name": "NIHARI MASALA",
+      "brand": "ESSENCE",
+      "category": "spices_masala",
+      "packaging": "50 GMS X 48 PKTS PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "halal",
+        "masala",
+        "nihari",
+        "seasoning",
+        "spices"
+      ]
+    },
+    {
+      "id": 91,
+      "sno": 91,
+      "name": "QORMA MASALA",
+      "brand": "ESSENCE",
+      "category": "spices_masala",
+      "packaging": "50 GMS X 48 PKTS PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "halal",
+        "masala",
+        "qorma",
+        "seasoning",
+        "spices"
+      ]
+    },
+    {
+      "id": 92,
+      "sno": 92,
+      "name": "CHIKEN TIKKA MASALA",
+      "brand": "ESSENCE",
+      "category": "spices_masala",
+      "packaging": "50 GMS X 48 PKTS PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "chiken",
+        "halal",
+        "masala",
+        "seasoning",
+        "spices",
+        "tikka"
+      ]
+    },
+    {
+      "id": 93,
+      "sno": 93,
+      "name": "CHIKEN TANDOORI MASALA",
+      "brand": "ESSENCE",
+      "category": "spices_masala",
+      "packaging": "50 GMS X 48 PKTS PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "chiken",
+        "halal",
+        "masala",
+        "seasoning",
+        "spices",
+        "tandoori"
+      ]
+    },
+    {
+      "id": 94,
+      "sno": 94,
+      "name": "FISH MASALA - Essecen",
+      "brand": "ESSENCE",
+      "category": "spices_masala",
+      "packaging": "50 GMS X 48 PKTS PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "essecen",
+        "fish",
+        "halal",
+        "masala",
+        "seasoning",
+        "spices"
+      ]
+    },
+    {
+      "id": 95,
+      "sno": 95,
+      "name": "LAHORI FISH MASALA",
+      "brand": "ESSENCE",
+      "category": "spices_masala",
+      "packaging": "50 GMS X 48 PKTS PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "fish",
+        "halal",
+        "lahori",
+        "masala",
+        "seasoning",
+        "spices"
+      ]
+    },
+    {
+      "id": 96,
+      "sno": 96,
+      "name": "KARAHI GOSHT MASALA",
+      "brand": "ESSENCE",
+      "category": "spices_masala",
+      "packaging": "50 GMS X 48 PKTS PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "gosht",
+        "halal",
+        "karahi",
+        "masala",
+        "seasoning",
+        "spices"
+      ]
+    },
+    {
+      "id": 97,
+      "sno": 97,
+      "name": "ACHAR GOSHT MASALA",
+      "brand": "ESSENCE",
+      "category": "spices_masala",
+      "packaging": "50 GMS X 48 PKTS PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "achar",
+        "biryani",
+        "gosht",
+        "halal",
+        "masala",
+        "seasoning",
+        "spices"
+      ]
+    },
+    {
+      "id": 98,
+      "sno": 98,
+      "name": "VEGETABLE MIX MASALA",
+      "brand": "ESSENCE",
+      "category": "spices_masala",
+      "packaging": "50 GMS X 48 PKTS PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "halal",
+        "masala",
+        "mix",
+        "seasoning",
+        "spices",
+        "vegetable"
+      ]
+    },
+    {
+      "id": 99,
+      "sno": 99,
+      "name": "CURRY POWDER MASALA",
+      "brand": "ESSENCE",
+      "category": "spices_masala",
+      "packaging": "50 GMS X 48 PKTS PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "curry",
+        "halal",
+        "masala",
+        "powder",
+        "seasoning",
+        "spices"
+      ]
+    },
+    {
+      "id": 100,
+      "sno": 100,
+      "name": "PAYA MASALA",
+      "brand": "ESSENCE",
+      "category": "spices_masala",
+      "packaging": "50 GMS X 48 PKTS PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "halal",
+        "masala",
+        "paya",
+        "seasoning",
+        "spices"
+      ]
+    },
+    {
+      "id": 101,
+      "sno": 101,
+      "name": "CHAAT MASALA",
+      "brand": "ESSENCE",
+      "category": "spices_masala",
+      "packaging": "50 GMS X 48 PKTS PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "chaat",
+        "halal",
+        "masala",
+        "seasoning",
+        "spices"
+      ]
+    },
+    {
+      "id": 102,
+      "sno": 102,
+      "name": "RED CHILLI POWDER",
+      "brand": "ESSENCE",
+      "category": "spices_masala",
+      "packaging": "50 GMS X 72 PKTS PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "chilli",
+        "halal",
+        "masala",
+        "powder",
+        "red",
+        "seasoning",
+        "spices"
+      ]
+    },
+    {
+      "id": 103,
+      "sno": 103,
+      "name": "CORIANDER POWDER",
+      "brand": "ESSENCE",
+      "category": "spices_masala",
+      "packaging": "50 GMS X 72 PKTS PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "coriander",
+        "halal",
+        "masala",
+        "powder",
+        "seasoning",
+        "spices"
+      ]
+    },
+    {
+      "id": 104,
+      "sno": 104,
+      "name": "TURMERIX POWDER",
+      "brand": "ESSENCE",
+      "category": "spices_masala",
+      "packaging": "50 GMS X 72 PKTS PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "halal",
+        "masala",
+        "powder",
+        "seasoning",
+        "spices",
+        "turmerix"
+      ]
+    },
+    {
+      "id": 105,
+      "sno": 105,
+      "name": "KASURI METHI",
+      "brand": "ESSENCE",
+      "category": "spices_masala",
+      "packaging": "50 GMS X 72 PKTS PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "halal",
+        "kasuri",
+        "masala",
+        "methi",
+        "seasoning",
+        "spices"
+      ]
+    },
+    {
+      "id": 106,
+      "sno": 106,
+      "name": "CUMIN POWDER",
+      "brand": "ESSENCE",
+      "category": "spices_masala",
+      "packaging": "50 GMS X 72 PKTS PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "cumin",
+        "halal",
+        "masala",
+        "powder",
+        "seasoning",
+        "spices"
+      ]
+    },
+    {
+      "id": 107,
+      "sno": 107,
+      "name": "BLACK PAPER POWDER - Essnece",
+      "brand": "ESSENCE",
+      "category": "spices_masala",
+      "packaging": "50 GMS X 72 PKTS PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "black",
+        "essnece",
+        "halal",
+        "masala",
+        "paper",
+        "powder",
+        "seasoning",
+        "spices"
+      ]
+    },
+    {
+      "id": 108,
+      "sno": 108,
+      "name": "GARAM MASALA",
+      "brand": "ESSENCE",
+      "category": "spices_masala",
+      "packaging": "50 GMS X 72 PKTS PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "garam",
+        "halal",
+        "masala",
+        "seasoning",
+        "spices"
+      ]
+    },
+    {
+      "id": 109,
+      "sno": 109,
+      "name": "CORIANDER WHOLE",
+      "brand": "ESSENCE",
+      "category": "spices_masala",
+      "packaging": "50 GMS X 72 PKTS PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "coriander",
+        "halal",
+        "masala",
+        "seasoning",
+        "spices",
+        "whole"
+      ]
+    },
+    {
+      "id": 110,
+      "sno": 110,
+      "name": "CUMIN SEED WHOLE",
+      "brand": "ESSENCE",
+      "category": "spices_masala",
+      "packaging": "50 GMS X 72 PKTS PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "cumin",
+        "halal",
+        "masala",
+        "seasoning",
+        "seed",
+        "spices",
+        "whole"
+      ]
+    },
+    {
+      "id": 111,
+      "sno": 111,
+      "name": "GARLIC POWDER",
+      "brand": "ESSENCE",
+      "category": "spices_masala",
+      "packaging": "50 GMS X 72 PKTS PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "garlic",
+        "halal",
+        "masala",
+        "powder",
+        "seasoning",
+        "spices"
+      ]
+    },
+    {
+      "id": 112,
+      "sno": 112,
+      "name": "GINGER POWDER",
+      "brand": "ESSENCE",
+      "category": "spices_masala",
+      "packaging": "50 GMS X 72 PKTS PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "ginger",
+        "halal",
+        "masala",
+        "powder",
+        "seasoning",
+        "spices"
+      ]
+    },
+    {
+      "id": 113,
+      "sno": 113,
+      "name": "CAKE RUSK",
+      "brand": "ESSENCE",
+      "category": "rusks",
+      "packaging": "300 GMS X 12 CARD BOX PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "bakery",
+        "cake",
+        "rusk",
+        "snacks"
+      ]
+    },
+    {
+      "id": 114,
+      "sno": 114,
+      "name": "TEA RUSK",
+      "brand": "ESSENCE",
+      "category": "rusks",
+      "packaging": "300 GMS X 12 CARD BOX PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "bakery",
+        "rusk",
+        "snacks",
+        "tea"
+      ]
+    },
+    {
+      "id": 115,
+      "sno": 115,
+      "name": "TEA RUSK",
+      "brand": "ESSENCE",
+      "category": "rusks",
+      "packaging": "300 GMS X 12 PLASTIC BOX PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "bakery",
+        "rusk",
+        "snacks",
+        "tea"
+      ]
+    },
+    {
+      "id": 116,
+      "sno": 116,
+      "name": "TEA RUSK WITHOUT TILL & EGG",
+      "brand": "ESSENCE",
+      "category": "rusks",
+      "packaging": "300 GMS X 12 PLASTIC JAR PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "bakery",
+        "egg",
+        "rusk",
+        "snacks",
+        "tea",
+        "till",
+        "without"
+      ]
+    },
+    {
+      "id": 117,
+      "sno": 117,
+      "name": "TEA RUSK WITH TILL & EGG",
+      "brand": "ESSENCE",
+      "category": "rusks",
+      "packaging": "300 GMS X 12 PLASTIC JAR PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "bakery",
+        "egg",
+        "rusk",
+        "snacks",
+        "tea",
+        "till",
+        "with"
+      ]
+    },
+    {
+      "id": 118,
+      "sno": 118,
+      "name": "APPLE JAM (RED)",
+      "brand": "ESSENCE",
+      "category": "jams_jellies",
+      "packaging": "200 GMS X 12 GLASS JAR PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "apple",
+        "breakfast",
+        "jam",
+        "jelly",
+        "red",
+        "spread"
+      ]
+    },
+    {
+      "id": 119,
+      "sno": 119,
+      "name": "APPLE JAM (RED)",
+      "brand": "ESSENCE",
+      "category": "jams_jellies",
+      "packaging": "400 GMS X 12 GLASS JAR PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "apple",
+        "breakfast",
+        "jam",
+        "jelly",
+        "red",
+        "spread"
+      ]
+    },
+    {
+      "id": 120,
+      "sno": 120,
+      "name": "APPLE JAM (GOLDEN)",
+      "brand": "ESSENCE",
+      "category": "jams_jellies",
+      "packaging": "200 GMS X 12 GLASS JAR PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "apple",
+        "breakfast",
+        "golden",
+        "jam",
+        "jelly",
+        "spread"
+      ]
+    },
+    {
+      "id": 121,
+      "sno": 121,
+      "name": "APPLE JAM (GOLDEN)",
+      "brand": "ESSENCE",
+      "category": "jams_jellies",
+      "packaging": "400 GMS X 12 GLASS JAR PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "apple",
+        "breakfast",
+        "golden",
+        "jam",
+        "jelly",
+        "spread"
+      ]
+    },
+    {
+      "id": 122,
+      "sno": 122,
+      "name": "MANGO JAM",
+      "brand": "ESSENCE",
+      "category": "jams_jellies",
+      "packaging": "200 GMS X 12 GLASS JAR PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "breakfast",
+        "jam",
+        "jelly",
+        "mango",
+        "spread"
+      ]
+    },
+    {
+      "id": 123,
+      "sno": 123,
+      "name": "MANGO JAM",
+      "brand": "ESSENCE",
+      "category": "jams_jellies",
+      "packaging": "400 GMS X 12 GLASS JAR PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "breakfast",
+        "jam",
+        "jelly",
+        "mango",
+        "spread"
+      ]
+    },
+    {
+      "id": 124,
+      "sno": 124,
+      "name": "POMEGRANTE JAM",
+      "brand": "ESSENCE",
+      "category": "jams_jellies",
+      "packaging": "200 GMS X 12 GLASS JAR PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "breakfast",
+        "jam",
+        "jelly",
+        "pomegrante",
+        "spread"
+      ]
+    },
+    {
+      "id": 125,
+      "sno": 125,
+      "name": "POMEGRANTE JAM",
+      "brand": "ESSENCE",
+      "category": "jams_jellies",
+      "packaging": "400 GMS X 12 GLASS JAR PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "breakfast",
+        "jam",
+        "jelly",
+        "pomegrante",
+        "spread"
+      ]
+    },
+    {
+      "id": 126,
+      "sno": 126,
+      "name": "STRAWBERRY JAM",
+      "brand": "ESSENCE",
+      "category": "jams_jellies",
+      "packaging": "200 GMS X 12 GLASS JAR PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "breakfast",
+        "jam",
+        "jelly",
+        "spread",
+        "strawberry"
+      ]
+    },
+    {
+      "id": 127,
+      "sno": 127,
+      "name": "STRAWBERRY JAM",
+      "brand": "ESSENCE",
+      "category": "jams_jellies",
+      "packaging": "400 GMS X 12 GLASS JAR PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "breakfast",
+        "jam",
+        "jelly",
+        "spread",
+        "strawberry"
+      ]
+    },
+    {
+      "id": 128,
+      "sno": 128,
+      "name": "PINEAPPLE JAM",
+      "brand": "ESSENCE",
+      "category": "jams_jellies",
+      "packaging": "200 GMS X 12 GLASS JAR PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "breakfast",
+        "jam",
+        "jelly",
+        "pineapple",
+        "spread"
+      ]
+    },
+    {
+      "id": 129,
+      "sno": 129,
+      "name": "PINEAPPLE JAM",
+      "brand": "ESSENCE",
+      "category": "jams_jellies",
+      "packaging": "400 GMS X 12 GLASS JAR PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "breakfast",
+        "jam",
+        "jelly",
+        "pineapple",
+        "spread"
+      ]
+    },
+    {
+      "id": 130,
+      "sno": 130,
+      "name": "MIX FRUIT JAM",
+      "brand": "ESSENCE",
+      "category": "jams_jellies",
+      "packaging": "400 GMS X 12 GLASS JAR PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "breakfast",
+        "fruit",
+        "jam",
+        "jelly",
+        "mix",
+        "spread"
+      ]
+    },
+    {
+      "id": 131,
+      "sno": 131,
+      "name": "GINGER POWDER",
+      "brand": "ESSENCE",
+      "category": "spices_masala",
+      "packaging": "100 GMS X 24 PET BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "ginger",
+        "halal",
+        "masala",
+        "powder",
+        "seasoning",
+        "spices"
+      ]
+    },
+    {
+      "id": 132,
+      "sno": 132,
+      "name": "GARLIC POWDER",
+      "brand": "ESSENCE",
+      "category": "spices_masala",
+      "packaging": "100 GMS X 24 PET BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "garlic",
+        "halal",
+        "masala",
+        "powder",
+        "seasoning",
+        "spices"
+      ]
+    },
+    {
+      "id": 133,
+      "sno": 133,
+      "name": "ONION POWDER",
+      "brand": "ESSENCE",
+      "category": "spices_masala",
+      "packaging": "100 GMS X 24 PET BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "halal",
+        "masala",
+        "onion",
+        "powder",
+        "seasoning",
+        "spices"
+      ]
+    },
+    {
+      "id": 134,
+      "sno": 134,
+      "name": "PEPRICA POWDER",
+      "brand": "ESSENCE",
+      "category": "spices_masala",
+      "packaging": "100 GMS X 24 PET BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "halal",
+        "masala",
+        "peprica",
+        "powder",
+        "seasoning",
+        "spices"
+      ]
+    },
+    {
+      "id": 135,
+      "sno": 135,
+      "name": "Sidr Honey",
+      "brand": "ESSENCE",
+      "category": "honey",
+      "packaging": "250 GMS X 20 GLASS JAR PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "honey",
+        "natural",
+        "sidr",
+        "wellness"
+      ]
+    },
+    {
+      "id": 136,
+      "sno": 136,
+      "name": "Sidr Honey",
+      "brand": "ESSENCE",
+      "category": "honey",
+      "packaging": "500 GMS X 12 GLASS JAR PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "honey",
+        "natural",
+        "sidr",
+        "wellness"
+      ]
+    },
+    {
+      "id": 137,
+      "sno": 137,
+      "name": "Ispaghol",
+      "brand": "ESSENCE",
+      "category": "moringa_wellness",
+      "packaging": "140 GMS X 48 PET JAR PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "health",
+        "ispaghol",
+        "moringa",
+        "organic",
+        "tea",
+        "wellness"
+      ]
+    },
+    {
+      "id": 138,
+      "sno": 138,
+      "name": "Ispaghol",
+      "brand": "ESSENCE",
+      "category": "moringa_wellness",
+      "packaging": "5 GMS POUCHES X 24 IN 1 PKTS (24 PKTS X 1) PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "health",
+        "ispaghol",
+        "moringa",
+        "organic",
+        "tea",
+        "wellness"
+      ]
+    },
+    {
+      "id": 139,
+      "sno": 139,
+      "name": "BANANA JELLY",
+      "brand": "ESSENCE",
+      "category": "jams_jellies",
+      "packaging": "80 GMS X 72 PACKET PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "banana",
+        "breakfast",
+        "jam",
+        "jelly",
+        "spread"
+      ]
+    },
+    {
+      "id": 140,
+      "sno": 140,
+      "name": "MANGO JELLY",
+      "brand": "ESSENCE",
+      "category": "jams_jellies",
+      "packaging": "80 GMS X 72 PACKET PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "breakfast",
+        "jam",
+        "jelly",
+        "mango",
+        "spread"
+      ]
+    },
+    {
+      "id": 141,
+      "sno": 141,
+      "name": "STRAWBERRY JELLY",
+      "brand": "ESSENCE",
+      "category": "jams_jellies",
+      "packaging": "80 GMS X 72 PACKET PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "breakfast",
+        "jam",
+        "jelly",
+        "spread",
+        "strawberry"
+      ]
+    },
+    {
+      "id": 142,
+      "sno": 142,
+      "name": "PINEAPPLE JELLY",
+      "brand": "ESSENCE",
+      "category": "jams_jellies",
+      "packaging": "80 GMS X 72 PACKET PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "breakfast",
+        "jam",
+        "jelly",
+        "pineapple",
+        "spread"
+      ]
+    },
+    {
+      "id": 143,
+      "sno": 143,
+      "name": "BLUE BERRY JELLY",
+      "brand": "ESSENCE",
+      "category": "jams_jellies",
+      "packaging": "80 GMS X 72 PACKET PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "berry",
+        "blue",
+        "breakfast",
+        "jam",
+        "jelly",
+        "spread"
+      ]
+    },
+    {
+      "id": 144,
+      "sno": 144,
+      "name": "KHEER MIX",
+      "brand": "ESSENCE",
+      "category": "vermicelli_desserts",
+      "packaging": "155 GMS X 72 PKT PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "confectionery",
+        "dessert",
+        "kheer",
+        "kunafa",
+        "mix",
+        "sweet",
+        "vermicelli"
+      ]
+    },
+    {
+      "id": 145,
+      "sno": 145,
+      "name": "DODH DULLARI",
+      "brand": "ESSENCE",
+      "category": "vermicelli_desserts",
+      "packaging": "220 GMS X 72 PKT PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "confectionery",
+        "dessert",
+        "dodh",
+        "dullari",
+        "kunafa",
+        "sweet",
+        "vermicelli"
+      ]
+    },
+    {
+      "id": 146,
+      "sno": 146,
+      "name": "LAB - E - SHIREEN",
+      "brand": "ESSENCE",
+      "category": "vermicelli_desserts",
+      "packaging": "150 GMS X 72 PKT PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "confectionery",
+        "dessert",
+        "kunafa",
+        "lab",
+        "shireen",
+        "sweet",
+        "vermicelli"
+      ]
+    },
+    {
+      "id": 147,
+      "sno": 147,
+      "name": "SHEER KHURMA MIX",
+      "brand": "ESSENCE",
+      "category": "vermicelli_desserts",
+      "packaging": "160 GMS X 72 PKT PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "confectionery",
+        "dessert",
+        "khurma",
+        "kunafa",
+        "mix",
+        "sheer",
+        "sweet",
+        "vermicelli"
+      ]
+    },
+    {
+      "id": 148,
+      "sno": 148,
+      "name": "PISTA KHEER",
+      "brand": "ESSENCE",
+      "category": "vermicelli_desserts",
+      "packaging": "155 GMS X 72 PKT PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "confectionery",
+        "dessert",
+        "kheer",
+        "kunafa",
+        "pista",
+        "sweet",
+        "vermicelli"
+      ]
+    },
+    {
+      "id": 149,
+      "sno": 149,
+      "name": "BADAM KHEER",
+      "brand": "ESSENCE",
+      "category": "vermicelli_desserts",
+      "packaging": "155 GMS X 72 PKT PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "badam",
+        "confectionery",
+        "dessert",
+        "kheer",
+        "kunafa",
+        "sweet",
+        "vermicelli"
+      ]
+    },
+    {
+      "id": 150,
+      "sno": 150,
+      "name": "BANANA CUSTARD 100 GMS",
+      "brand": "ESSENCE",
+      "category": "vermicelli_desserts",
+      "packaging": "100 GMS X 72 PKT PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "banana",
+        "confectionery",
+        "custard",
+        "dessert",
+        "gms",
+        "kunafa",
+        "sweet",
+        "vermicelli"
+      ]
+    },
+    {
+      "id": 151,
+      "sno": 151,
+      "name": "MANGO CUSTARD 100 GMS",
+      "brand": "ESSENCE",
+      "category": "vermicelli_desserts",
+      "packaging": "100 GMS X 72 PKT PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "confectionery",
+        "custard",
+        "dessert",
+        "gms",
+        "kunafa",
+        "mango",
+        "sweet",
+        "vermicelli"
+      ]
+    },
+    {
+      "id": 152,
+      "sno": 152,
+      "name": "Strawberry Custard 100 GMS",
+      "brand": "ESSENCE",
+      "category": "vermicelli_desserts",
+      "packaging": "100 GMS X 72 PKT PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "confectionery",
+        "custard",
+        "dessert",
+        "gms",
+        "kunafa",
+        "strawberry",
+        "sweet",
+        "vermicelli"
+      ]
+    },
+    {
+      "id": 153,
+      "sno": 153,
+      "name": "Vanilla Custard 100 GMS",
+      "brand": "ESSENCE",
+      "category": "vermicelli_desserts",
+      "packaging": "100 GMS X 72 PKT PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "confectionery",
+        "custard",
+        "dessert",
+        "gms",
+        "kunafa",
+        "sweet",
+        "vanilla",
+        "vermicelli"
+      ]
+    },
+    {
+      "id": 154,
+      "sno": 154,
+      "name": "SYNTHETIC VINEGAR 300 ML PET BOTTLE",
+      "brand": "ESSENCE",
+      "category": "vinegar_water",
+      "packaging": "300 ML X 12 BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "cooking ingredients",
+        "kewra",
+        "pet",
+        "rose water",
+        "synthetic",
+        "vinegar"
+      ]
+    },
+    {
+      "id": 155,
+      "sno": 155,
+      "name": "SYNTHETIC VINEGAR 800 ML PET BOTTLE",
+      "brand": "ESSENCE",
+      "category": "vinegar_water",
+      "packaging": "800 ML X 12 BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "cooking ingredients",
+        "kewra",
+        "pet",
+        "rose water",
+        "synthetic",
+        "vinegar"
+      ]
+    },
+    {
+      "id": 156,
+      "sno": 156,
+      "name": "Miswak 14 to 16mm 8\" Length",
+      "brand": "ESSENCE",
+      "category": "snacks_ingredients",
+      "packaging": "60 pcs in box 16 box in Master Carton",
+      "match_keywords": [
+        "food service",
+        "ingredients",
+        "length",
+        "miswak",
+        "snacks"
+      ]
+    },
+    {
+      "id": 157,
+      "sno": 157,
+      "name": "Miswak 10 to 12mm 8\" Length",
+      "brand": "ESSENCE",
+      "category": "snacks_ingredients",
+      "packaging": "60 pcs in box 16 box in Master Carton",
+      "match_keywords": [
+        "food service",
+        "ingredients",
+        "length",
+        "miswak",
+        "snacks"
+      ]
+    },
+    {
+      "id": 158,
+      "sno": 158,
+      "name": "Miswak 10 to 12mm 6\" Length",
+      "brand": "ESSENCE",
+      "category": "snacks_ingredients",
+      "packaging": "12 pcs with holder in box 72 box in Master Carton",
+      "match_keywords": [
+        "food service",
+        "ingredients",
+        "length",
+        "miswak",
+        "snacks"
+      ]
+    },
+    {
+      "id": 159,
+      "sno": 159,
+      "name": "Guava Juice",
+      "brand": "ESSENCE",
+      "category": "juices",
+      "packaging": "2000 ML X 6 Pet Bottle in Carton",
+      "match_keywords": [
+        "beverage",
+        "drinks",
+        "guava",
+        "juice"
+      ]
+    },
+    {
+      "id": 160,
+      "sno": 160,
+      "name": "Guava Juice",
+      "brand": "ESSENCE",
+      "category": "juices",
+      "packaging": "250ml X 24  Pet Bottle in Carton",
+      "match_keywords": [
+        "beverage",
+        "drinks",
+        "guava",
+        "juice"
+      ]
+    },
+    {
+      "id": 161,
+      "sno": 161,
+      "name": "Guava Juice",
+      "brand": "ESSENCE",
+      "category": "juices",
+      "packaging": "250ml X 48  Pet Bottle in Carton",
+      "match_keywords": [
+        "beverage",
+        "drinks",
+        "guava",
+        "juice"
+      ]
+    },
+    {
+      "id": 162,
+      "sno": 162,
+      "name": "Mango Juice",
+      "brand": "ESSENCE",
+      "category": "juices",
+      "packaging": "2000 ML X 6 Pet Bottle in Carton",
+      "match_keywords": [
+        "beverage",
+        "drinks",
+        "juice",
+        "mango"
+      ]
+    },
+    {
+      "id": 163,
+      "sno": 163,
+      "name": "Mango Juice",
+      "brand": "ESSENCE",
+      "category": "juices",
+      "packaging": "250ml X 24  Pet Bottle in Carton",
+      "match_keywords": [
+        "beverage",
+        "drinks",
+        "juice",
+        "mango"
+      ]
+    },
+    {
+      "id": 164,
+      "sno": 164,
+      "name": "Mango Juice",
+      "brand": "ESSENCE",
+      "category": "juices",
+      "packaging": "250ml X 48  Pet Bottle in Carton",
+      "match_keywords": [
+        "beverage",
+        "drinks",
+        "juice",
+        "mango"
+      ]
+    },
+    {
+      "id": 165,
+      "sno": 165,
+      "name": "TOMATO KETCHUP",
+      "brand": "ESSENCE",
+      "category": "sauces",
+      "packaging": "1KG X 12 POUCH PACKET IN MASTER CARTON",
+      "match_keywords": [
+        "condiment",
+        "ethnic food",
+        "hot sauce",
+        "ketchup",
+        "sauce",
+        "tomato"
+      ]
+    },
+    {
+      "id": 166,
+      "sno": 166,
+      "name": "CHILLI GARLIC SAUCE",
+      "brand": "ESSENCE",
+      "category": "sauces",
+      "packaging": "1KG X 12 POUCH PACKET IN MASTER CARTON",
+      "match_keywords": [
+        "chilli",
+        "condiment",
+        "ethnic food",
+        "garlic",
+        "hot sauce",
+        "sauce"
+      ]
+    },
+    {
+      "id": 167,
+      "sno": 167,
+      "name": "MAYONNAISE SIGNATURE",
+      "brand": "ESSENCE",
+      "category": "sauces",
+      "packaging": "1KG X 12 POUCH PACKET IN MASTER CARTON",
+      "match_keywords": [
+        "condiment",
+        "ethnic food",
+        "hot sauce",
+        "mayonnaise",
+        "sauce",
+        "signature"
+      ]
+    },
+    {
+      "id": 168,
+      "sno": 168,
+      "name": "JALAPENO SALSA 310 ML",
+      "brand": "ESSENCE",
+      "category": "sauces",
+      "packaging": "310 ML  X 12 GLASS BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "condiment",
+        "ethnic food",
+        "hot sauce",
+        "jalapeno",
+        "salsa",
+        "sauce"
+      ]
+    },
+    {
+      "id": 169,
+      "sno": 169,
+      "name": "MEXICAN SALSA 310 ML",
+      "brand": "ESSENCE",
+      "category": "sauces",
+      "packaging": "310 ML  X 12 GLASS BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "condiment",
+        "ethnic food",
+        "hot sauce",
+        "mexican",
+        "salsa",
+        "sauce"
+      ]
+    },
+    {
+      "id": 170,
+      "sno": 170,
+      "name": "SWEETS MAKHANA 250 GMS",
+      "brand": "ESSENCE",
+      "category": "vermicelli_desserts",
+      "packaging": "250 GMS  X 12 POUCH PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "confectionery",
+        "dessert",
+        "gms",
+        "kunafa",
+        "makhana",
+        "sweet",
+        "sweets",
+        "vermicelli"
+      ]
+    },
+    {
+      "id": 171,
+      "sno": 171,
+      "name": "BREAD CRUMBS 1KG",
+      "brand": "ESSENCE",
+      "category": "snacks_ingredients",
+      "packaging": "1KG X 12 POLY BAG PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "bread",
+        "crumbs",
+        "food service",
+        "ingredients",
+        "snacks"
+      ]
+    },
+    {
+      "id": 172,
+      "sno": 172,
+      "name": "ROSE WATER 300 ML PET BOTTLE",
+      "brand": "ESSENCE",
+      "category": "vinegar_water",
+      "packaging": "300 ML X 12 BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "cooking ingredients",
+        "kewra",
+        "pet",
+        "rose",
+        "rose water",
+        "vinegar",
+        "water"
+      ]
+    },
+    {
+      "id": 173,
+      "sno": 173,
+      "name": "KEWRA WATER 300 ML PET BOTTLE",
+      "brand": "ESSENCE",
+      "category": "vinegar_water",
+      "packaging": "300 ML X 12 BOTTLE PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "cooking ingredients",
+        "kewra",
+        "pet",
+        "rose water",
+        "vinegar",
+        "water"
+      ]
+    },
+    {
+      "id": 174,
+      "sno": 174,
+      "name": "Masala Papri",
+      "brand": "ESSENCE",
+      "category": "spices_masala",
+      "packaging": "200 X 24 POUCH PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "biryani",
+        "halal",
+        "masala",
+        "papri",
+        "seasoning",
+        "spices"
+      ]
+    },
+    {
+      "id": 175,
+      "sno": 175,
+      "name": "Dahi Boondhi",
+      "brand": "ESSENCE",
+      "category": "snacks_ingredients",
+      "packaging": "200 X 24 POUCH PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "boondhi",
+        "dahi",
+        "food service",
+        "ingredients",
+        "snacks"
+      ]
+    },
+    {
+      "id": 176,
+      "sno": 176,
+      "name": "Dry Dates",
+      "brand": "ESSENCE",
+      "category": "snacks_ingredients",
+      "packaging": "300 X 45 POUCH PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "dates",
+        "dry",
+        "food service",
+        "ingredients",
+        "snacks"
+      ]
+    },
+    {
+      "id": 177,
+      "sno": 177,
+      "name": "Rewri",
+      "brand": "ESSENCE",
+      "category": "vermicelli_desserts",
+      "packaging": "250 X 50 POUCH PACKED IN MASTER CARTON",
+      "match_keywords": [
+        "confectionery",
+        "dessert",
+        "kunafa",
+        "rewri",
+        "sweet",
+        "vermicelli"
+      ]
+    }
+  ]
+}

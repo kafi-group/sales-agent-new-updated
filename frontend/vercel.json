@@ -43,7 +43,7 @@
     },
     {
       "source": "/api/:path*",
-      "destination": "https://kafi-sales-agent-production.up.railway.app/api/:path*"
+      "destination": "https://sales-agent-new-updated-production.up.railway.app/api/:path*"
     },
     {
       "source": "/((?!api/).*)",

@@ -144,7 +144,9 @@ function messageForHttpError(status: number, text: string, statusText: string): 
 }
 
 /** Direct Railway API — used for small single-shot uploads when same-origin proxy is fine to skip. */
-const RAILWAY_API_BASE = "https://kafi-sales-agent-production.up.railway.app/api";
+const RAILWAY_API_BASE =
+  String(import.meta.env.VITE_RAILWAY_API_BASE || "").trim() ||
+  "https://sales-agent-new-updated-production.up.railway.app/api";
 
 /** Email providers reject ~25 MB total messages; keep each file under this. */
 export const EMAIL_ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;

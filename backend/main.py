@@ -109,11 +109,15 @@ def _run_bulk_email_schedule_job():
 
 
 def _keepalive_ping():
-    """Self-ping HTTP endpoint every 2 minutes to keep Railway container warm 24/7."""
+    """Self-ping public /health every 2 minutes to keep Railway container warm 24/7."""
     import urllib.request
     try:
-        base = settings.twilio_webhook_base_url or "https://kafi-sales-agent-production.up.railway.app"
-        url = f"{base}/api/leads/product-types"
+        base = (
+            (settings.public_api_base_url or "").strip()
+            or (settings.twilio_webhook_base_url or "").strip()
+            or "https://sales-agent-new-updated-production.up.railway.app"
+        )
+        url = f"{base.rstrip('/')}/api/health"
         req = urllib.request.Request(url, headers={"User-Agent": "Kafi-KeepAlive/1.0"})
         with urllib.request.urlopen(req, timeout=10) as resp:
             resp.read()

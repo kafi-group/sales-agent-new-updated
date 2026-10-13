@@ -87,6 +87,12 @@ function friendlyCallError(err: unknown): string {
     if (typeof msg === "string" && msg.trim()) raw = msg;
     else if (msg != null && msg !== "") raw = String(msg);
   }
+  if (/13225|blacklisted|blacklist/i.test(raw)) {
+    return (
+      "This number is blocked by Twilio (13225). The phone will not ring. " +
+      "Check Twilio Debugger, or try another number."
+    );
+  }
   if (/13224|invalid phone number/i.test(raw)) {
     return "Invalid phone number format or the destination country is blocked in Twilio Voice Geographic Permissions.";
   }
@@ -115,6 +121,36 @@ function friendlyCallError(err: unknown): string {
     return `${raw}. Check Twilio Debugger and that Voice geo-permissions allow this country.`;
   }
   return raw;
+}
+
+/** PSTN failures that mean the client's phone never rang. Remarks stay closed. */
+const BLOCKED_DIAL = /13225|13224|21215|21214|21408|31005/;
+
+function isBlockedDialError(err: unknown): boolean {
+  if (err instanceof Error && err.message) return BLOCKED_DIAL.test(err.message);
+  if (typeof err === "string") return BLOCKED_DIAL.test(err);
+  if (err && typeof err === "object" && "message" in err) {
+    const msg = (err as { message: unknown }).message;
+    if (typeof msg === "string") return BLOCKED_DIAL.test(msg);
+    if (msg && typeof msg === "object" && "message" in (msg as object)) {
+      const inner = (msg as { message: unknown }).message;
+      if (typeof inner === "string") return BLOCKED_DIAL.test(inner);
+    }
+  }
+  return false;
+}
+
+function customerWasReached(
+  status: string,
+  twilioStatus: string | null,
+  errorCode: string | null,
+): boolean {
+  if (errorCode && BLOCKED_DIAL.test(errorCode)) return false;
+  if (status === "ringing" || status === "answered" || status === "no-answer" || status === "busy") {
+    return true;
+  }
+  // Completed child leg means the network finished a real dial (answered, then hung up).
+  return twilioStatus === "completed" && status === "ended";
 }
 
 const TwilioVoiceContext = createContext<TwilioVoiceContextValue | null>(null);
@@ -147,7 +183,11 @@ export function TwilioVoiceProvider({ children }: { children: ReactNode }) {
   const [active, setActive] = useState(false);
   const [dialing, setDialing] = useState(false);
   const dialingRef = useRef(false);
-  const dialAttemptRef = useRef<{ cancelled: boolean } | null>(null);
+  const dialAttemptRef = useRef<{ cancelled: boolean; connectStarted: boolean } | null>(null);
+  /** True once the customer's phone actually rang or answered this attempt. */
+  const customerRangRef = useRef(false);
+  const lastLegErrorRef = useRef<string | null>(null);
+  const endedByUserRef = useRef(false);
   const [activeCall, setActiveCall] = useState<ActiveCallTarget | null>(null);
   const [legStatus, setLegStatus] = useState<CallLegStatus>("dialing");
   const [legAttempts, setLegAttempts] = useState(0);
@@ -282,6 +322,7 @@ export function TwilioVoiceProvider({ children }: { children: ReactNode }) {
     // End must stop EVERYTHING immediately, including a call that is still being set up
     // (server round-trip / connecting): mark it cancelled so it can never connect later,
     // release the dial lock, then drop any live call.
+    endedByUserRef.current = true;
     if (dialAttemptRef.current) {
       dialAttemptRef.current.cancelled = true;
       dialAttemptRef.current = null;
@@ -324,11 +365,14 @@ export function TwilioVoiceProvider({ children }: { children: ReactNode }) {
     ) => {
     activePrepRef.current = prep;
     setCallError(null);
+    customerRangRef.current = false;
+    lastLegErrorRef.current = null;
+    endedByUserRef.current = false;
 
     // Capture prep in closure so a later dial cannot steal this call's follow-up.
     const prepForThisCall = prep;
     let finished = false;
-    const finishCall = (call: Call) => {
+    const finishCall = (call: Call, err?: unknown) => {
       if (finished) return;
       finished = true;
       if (callRef.current === call) {
@@ -339,59 +383,137 @@ export function TwilioVoiceProvider({ children }: { children: ReactNode }) {
       if (activePrepRef.current?.id === prepForThisCall.id) {
         activePrepRef.current = null;
       }
+      const blocked = Boolean(err && isBlockedDialError(err));
       const buyerId = prepForThisCall.buyer_id ?? null;
       const dialedPhone = prepForThisCall.lead_phone ?? null;
-      let triedPhones: string[] = [];
-      if (buyerId != null && dialedPhone) {
-        const session = leadDialSessionRef.current;
-        if (session?.buyerId === buyerId) {
-          triedPhones = [...session.triedPhones];
-          if (!triedPhones.some((p) => phonesMatch(p, dialedPhone))) {
-            triedPhones.push(dialedPhone);
+      void (async () => {
+        let errorCode = lastLegErrorRef.current;
+        let reached = customerRangRef.current;
+        const sid = (call as unknown as { parameters?: Record<string, string> }).parameters?.CallSid;
+        if (sid && (!reached || !errorCode)) {
+          try {
+            const res = await client.getCallLegStatus(sid);
+            if (res.error_code) {
+              errorCode = res.error_code;
+              lastLegErrorRef.current = res.error_code;
+            }
+            if (
+              customerWasReached(res.status, res.twilio_status, res.error_code ?? null)
+            ) {
+              reached = true;
+              customerRangRef.current = true;
+            }
+          } catch {
+            /* decide from what we already saw */
           }
-        } else {
-          triedPhones = [dialedPhone];
         }
-        leadDialSessionRef.current = { buyerId, triedPhones };
-      }
-      setPendingFollowUp({
-        interactionId: prepForThisCall.id,
-        label:
-          prepForThisCall.company_name ||
-          prepForThisCall.contact_name ||
-          prepForThisCall.subject?.replace(/^Call to /, "") ||
-          "this call",
-        buyerId,
-        contactId: prepForThisCall.contact_id ?? null,
-        dialedPhone,
-        triedPhones,
-      });
+        const pstnBlocked = Boolean(errorCode && BLOCKED_DIAL.test(errorCode));
+        if (pstnBlocked || blocked || !reached) {
+          if (!pstnBlocked && !blocked && !reached && endedByUserRef.current) {
+            return;
+          }
+          const msg = pstnBlocked
+            ? friendlyCallError(errorCode)
+            : blocked
+              ? friendlyCallError(err)
+              : "Call ended before the client's phone rang. Nothing was connected.";
+          setCallError(msg);
+          return;
+        }
+        let triedPhones: string[] = [];
+        if (buyerId != null && dialedPhone) {
+          const session = leadDialSessionRef.current;
+          if (session?.buyerId === buyerId) {
+            triedPhones = [...session.triedPhones];
+            if (!triedPhones.some((p) => phonesMatch(p, dialedPhone))) {
+              triedPhones.push(dialedPhone);
+            }
+          } else {
+            triedPhones = [dialedPhone];
+          }
+          leadDialSessionRef.current = { buyerId, triedPhones };
+        }
+        setPendingFollowUp({
+          interactionId: prepForThisCall.id,
+          label:
+            prepForThisCall.company_name ||
+            prepForThisCall.contact_name ||
+            prepForThisCall.subject?.replace(/^Call to /, "") ||
+            "this call",
+          buyerId,
+          contactId: prepForThisCall.contact_id ?? null,
+          dialedPhone,
+          triedPhones,
+        });
+      })();
     };
 
     try {
-      const connectPromise = activeDevice.connect({
-        params: {
-          To: prep.lead_phone!,
-          leadPhone: prep.lead_phone!,
-          interaction_id: String(prep.id),
-        },
-      });
-
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        window.setTimeout(
-          () =>
-            reject(
-              new Error(
-                "Call connection timed out (15s). Please check your internet connection and allow microphone access in the browser (padlock → Site settings).",
-              ),
+      // Re-register this same device if it dropped during the slow prepare request.
+      // Creating a new Device here would destroy an in-flight dial.
+      let device = activeDevice;
+      if (device.state !== "registered") {
+        const { token } = await client.getVoiceToken();
+        device.updateToken(token);
+        await device.register();
+      }
+      if (isCancelled()) throw new DialCancelledError();
+      if (device.state !== "registered") {
+        throw new Error(
+          "Twilio calling is not ready. Refresh the page, allow microphone in the browser (padlock icon), or check Settings → Twilio.",
+        );
+      }
+      if (dialAttemptRef.current) {
+        dialAttemptRef.current.connectStarted = true;
+      }
+      // If signaling never finishes, hang up the late call so it cannot open remarks.
+      let connectSettled = false;
+      const call = await new Promise<Call>((resolve, reject) => {
+        const timer = window.setTimeout(() => {
+          if (connectSettled) return;
+          connectSettled = true;
+          reject(
+            new Error(
+              "Call connection timed out. The client's phone was not reached. Allow the microphone and try again.",
             ),
-          15000,
-        ),
-      );
-
-      const call = await Promise.race([connectPromise, timeoutPromise]);
+          );
+        }, 40000);
+        device
+          .connect({
+            params: {
+              To: prep.lead_phone!,
+              leadPhone: prep.lead_phone!,
+              interaction_id: String(prep.id),
+            },
+          })
+          .then(
+            (connected) => {
+              if (connectSettled || isCancelled()) {
+                try {
+                  connected.disconnect();
+                } catch {
+                  /* ignore */
+                }
+                if (!connectSettled) {
+                  connectSettled = true;
+                  window.clearTimeout(timer);
+                  reject(new DialCancelledError());
+                }
+                return;
+              }
+              connectSettled = true;
+              window.clearTimeout(timer);
+              resolve(connected);
+            },
+            (connectErr: unknown) => {
+              if (connectSettled) return;
+              connectSettled = true;
+              window.clearTimeout(timer);
+              reject(connectErr);
+            },
+          );
+      });
       if (isCancelled()) {
-        // User pressed End while this was connecting: hang up the moment it appears.
         try {
           call.disconnect();
         } catch {
@@ -406,7 +528,7 @@ export function TwilioVoiceProvider({ children }: { children: ReactNode }) {
         console.error("Twilio call error:", err);
         const friendly = friendlyCallError(err);
         setCallError(friendly);
-        finishCall(call);
+        finishCall(call, err);
       });
       call.on("disconnect", () => finishCall(call));
       call.on("cancel", () => finishCall(call));
@@ -452,15 +574,15 @@ export function TwilioVoiceProvider({ children }: { children: ReactNode }) {
 
   /**
    * One lock for every Call button: only one call can be set up or live at a time. It is held
-   * from the click until the call is connected, and given up after 30s if the server is stuck
-   * (a late answer then dials nothing). End releases it immediately.
+   * from the click until Twilio connect starts. If the server is still preparing after 20s,
+   * the attempt is cancelled and nothing is dialed. End releases it immediately.
    */
   const withDialLock = useCallback(
     async <T,>(fn: (isCancelled: () => boolean) => Promise<T>): Promise<T> => {
       if (dialingRef.current || callRef.current) {
         throw new Error("A call is already in progress — end it (or wait) before dialing again.");
       }
-      const attempt = { cancelled: false };
+      const attempt = { cancelled: false, connectStarted: false };
       dialingRef.current = true;
       dialAttemptRef.current = attempt;
       setDialing(true);
@@ -472,9 +594,10 @@ export function TwilioVoiceProvider({ children }: { children: ReactNode }) {
         }
       };
       const guard = window.setTimeout(() => {
+        if (attempt.connectStarted) return;
         attempt.cancelled = true;
         release();
-      }, 30000);
+      }, 20000);
       try {
         return await fn(() => attempt.cancelled);
       } finally {
@@ -547,6 +670,15 @@ export function TwilioVoiceProvider({ children }: { children: ReactNode }) {
         if (stopped) return;
         setLegStatus(res.status as CallLegStatus);
         setLegAttempts(res.attempts);
+        if (res.error_code) {
+          lastLegErrorRef.current = res.error_code;
+          if (BLOCKED_DIAL.test(res.error_code)) {
+            setCallError(friendlyCallError(res.error_code));
+          }
+        }
+        if (customerWasReached(res.status, res.twilio_status, res.error_code ?? null)) {
+          customerRangRef.current = true;
+        }
       } catch {
         /* keep the last known status */
       }

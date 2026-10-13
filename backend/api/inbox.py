@@ -79,7 +79,15 @@ def _guard_configured(user: AppUser) -> None:
 
 
 def _inbox_error_message(exc: Exception) -> str:
-    return f"Could not read inbox: {exc}"
+    text = str(exc) or type(exc).__name__
+    lower = text.lower()
+    if "timed out" in lower or "timeout" in lower or "mailbox is busy" in lower:
+        return (
+            "Could not reach the company mail server (IMAP). "
+            "SMTP may still work for sending — ask hosting to open/allow IMAP port 993 "
+            f"for the API host. Details: {text}"
+        )
+    return f"Could not read inbox: {text}"
 
 
 def _expunge_mailbox_user(db, other: AppUser) -> AppUser:

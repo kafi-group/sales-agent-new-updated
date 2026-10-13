@@ -322,6 +322,8 @@ export type ApiRequestOptions = RequestInit & {
 
 function timeoutForPath(path: string): number {
   if (path.startsWith("/auth/")) return AUTH_FETCH_TIMEOUT_MS;
+  // Manual / lead dial only prepares a row. A 60s wait here looked like a call that never rang.
+  if (path === "/calls/dial" || /^\/leads\/\d+\/call$/.test(path)) return 20_000;
   if (
     path.startsWith("/leads/table/dedupe") ||
     path.startsWith("/leads/table/cleanup-sparse") ||
@@ -372,8 +374,22 @@ function timeoutForPath(path: string): number {
   return FETCH_TIMEOUT_MS;
 }
 
-function isRetryableStatus(status: number): boolean {
+function isRetryableStatus(status: number, path: string): boolean {
+  // Inbox 502s are almost always IMAP failures — retrying keeps the UI on
+  // "Loading conversations…" for minutes without helping.
+  if (status === 502 && path.startsWith("/inbox")) return false;
   return status === 502 || status === 503 || status === 504;
+}
+
+/** Only expire the session when the 401 still matches the token we sent. */
+function expireSessionIfCurrent(requestToken: string | null): void {
+  const current = getStoredToken();
+  // Cookie-only requests: both null. Bearer requests: must still be the same token.
+  if (current !== requestToken) return;
+  clearSession();
+  if (!window.location.hash.includes("login")) {
+    window.dispatchEvent(new Event("kafi:auth-expired"));
+  }
 }
 
 function networkErrorMessage(isTimeout: boolean): string {
@@ -390,6 +406,8 @@ async function request<T>(path: string, options?: ApiRequestOptions): Promise<T>
     noRetry = false,
     ...fetchOptions
   } = options ?? {};
+  // Capture at start so a late 401 from an old session cannot wipe a newer login.
+  const requestToken = getStoredToken();
   const headers = new Headers(authHeaders({ "Content-Type": "application/json" }));
   if (fetchOptions.headers) {
     const extra = new Headers(fetchOptions.headers);
@@ -416,7 +434,7 @@ async function request<T>(path: string, options?: ApiRequestOptions): Promise<T>
       });
       window.clearTimeout(timeoutId);
 
-      if (isRetryableStatus(res.status) && canRetry && attempt < maxAttempts - 1) {
+      if (isRetryableStatus(res.status, path) && canRetry && attempt < maxAttempts - 1) {
         lastNetworkError = new Error(`Upstream ${res.status}`);
         lastWasTimeout = false;
         await new Promise((resolve) => setTimeout(resolve, RETRY_BACKOFF_MS[attempt] ?? 3_500));
@@ -424,10 +442,7 @@ async function request<T>(path: string, options?: ApiRequestOptions): Promise<T>
       }
 
       if (res.status === 401 && path !== "/auth/login") {
-        clearSession();
-        if (!window.location.hash.includes("login")) {
-          window.dispatchEvent(new Event("kafi:auth-expired"));
-        }
+        expireSessionIfCurrent(requestToken);
       }
       if (!res.ok) {
         const text = await res.text();
@@ -3210,9 +3225,12 @@ export const client = {
   },
   /** What the customer's phone is doing during a dashboard call (ringing / answered / busy ...). */
   getCallLegStatus: (callSid: string) =>
-    request<{ status: string; twilio_status: string | null; attempts: number }>(
-      `/call-legs/status?call_sid=${encodeURIComponent(callSid)}`,
-    ),
+    request<{
+      status: string;
+      twilio_status: string | null;
+      attempts: number;
+      error_code?: string | null;
+    }>(`/call-legs/status?call_sid=${encodeURIComponent(callSid)}`),
   /** Graded scorecard (targets vs. actual) for a day / week / month. */
   getKpiScorecard: (params: { date: string; period?: KpiPeriod | string; user_id?: number | null }) => {
     const search = new URLSearchParams();
@@ -3705,8 +3723,7 @@ export const client = {
       { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} },
     );
     if (res.status === 401) {
-      clearSession();
-      window.dispatchEvent(new Event("kafi:auth-expired"));
+      expireSessionIfCurrent(token);
     }
     if (!res.ok) {
       const text = await res.text();
@@ -4662,8 +4679,7 @@ export const client = {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
     if (res.status === 401) {
-      clearSession();
-      window.dispatchEvent(new Event("kafi:auth-expired"));
+      expireSessionIfCurrent(token);
     }
     if (!res.ok) {
       const text = await res.text();

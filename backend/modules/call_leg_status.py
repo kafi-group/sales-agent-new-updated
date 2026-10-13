@@ -33,12 +33,36 @@ def valid_call_sid(value: str | None) -> bool:
     return bool(value and _SID.match(value))
 
 
+def _digits(value: object) -> str | None:
+    code = "".join(ch for ch in str(value or "") if ch.isdigit())
+    return code or None
+
+
+def _child_error_code(client: Any, call: Any) -> str | None:
+    """Twilio's block/invalid codes live on the call notification, not the status string."""
+    direct = _digits(getattr(call, "error_code", None))
+    if direct:
+        return direct
+    raw = str(getattr(call, "status", "") or "").lower()
+    if raw not in {"failed", "canceled", "busy", "no-answer"}:
+        return None
+    try:
+        notes = client.calls(call.sid).notifications.list(limit=5)
+    except Exception:  # noqa: BLE001 - a missing debugger note must not break the dialer
+        return None
+    for note in notes:
+        code = _digits(getattr(note, "error_code", None))
+        if code:
+            return code
+    return None
+
+
 def leg_status(parent_call_sid: str) -> dict[str, Any]:
     """Status of the newest customer leg under this browser call, plus how many legs were tried."""
     if not valid_call_sid(parent_call_sid):
         raise ValueError("Invalid call id")
     if not (settings.twilio_account_sid and settings.twilio_auth_token):
-        return {"status": "unknown", "twilio_status": None, "attempts": 0}
+        return {"status": "unknown", "twilio_status": None, "attempts": 0, "error_code": None}
 
     from twilio.http.http_client import TwilioHttpClient
     from twilio.rest import Client
@@ -50,7 +74,12 @@ def leg_status(parent_call_sid: str) -> dict[str, Any]:
     )
     children = client.calls.list(parent_call_sid=parent_call_sid, limit=20)
     if not children:
-        return {"status": "dialing", "twilio_status": None, "attempts": 0}
+        return {"status": "dialing", "twilio_status": None, "attempts": 0, "error_code": None}
     newest = max(children, key=lambda c: c.date_created or c.start_time)
     raw = str(newest.status or "").lower()
-    return {"status": _MAP.get(raw, "dialing"), "twilio_status": raw, "attempts": len(children)}
+    return {
+        "status": _MAP.get(raw, "dialing"),
+        "twilio_status": raw,
+        "attempts": len(children),
+        "error_code": _child_error_code(client, newest),
+    }

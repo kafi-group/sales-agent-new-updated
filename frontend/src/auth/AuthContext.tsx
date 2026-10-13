@@ -120,6 +120,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const onExpired = () => {
+      // Ignore late 401s that lost the race to a newer login (token already replaced).
+      if (getStoredToken() || getStoredUser()) return;
       authEpochRef.current += 1;
       clearSession();
       setUser(null);

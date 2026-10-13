@@ -435,11 +435,12 @@ class VoiceClient:
         *,
         attempt: int = 1,
     ) -> str:
-        """TwiML for browser-initiated outbound calls — dials the lead directly.
+        """TwiML for one browser-initiated outbound call.
 
-        When hang-up-after-4th-ring is ON, Dial times out ~12s (~3s/ring). The Dial action
-        webhook may return a second Dial (attempt 2) so the lead hears ~8 rings
-        without voicemail.
+        The browser leg stays unanswered until the client's phone picks up
+        (answerOnBridge). One ~25s ring — no automatic redial. Live progress is
+        reported on the Number status callback; the Dial action only speaks a
+        failure or hangs up.
         """
         import html
 
@@ -474,13 +475,10 @@ class VoiceClient:
         caller_xml = html.escape(caller_id, quote=True)
         dial_attrs = [
             f'callerId="{caller_xml}"',
+            'answerOnBridge="true"',
             'record="record-from-answer"',
+            'timeout="25"',
         ]
-        # All callers (Sara/Rayan + dashboard sales dials): hang up after ~4 rings when
-        # hangup_after_fourth_ring is ON so unanswered calls do not hit voicemail / burn credits.
-        ring_timeout = self.ring_timeout_seconds()
-        if ring_timeout:
-            dial_attrs.append(f'timeout="{ring_timeout}"')
         if recording_url:
             recording_xml = html.escape(recording_url, quote=True)
             dial_attrs.extend(
@@ -490,15 +488,23 @@ class VoiceClient:
                     'recordingStatusCallbackEvent="completed"',
                 ]
             )
+        number_attrs: list[str] = []
         if status_url:
-            status_xml = html.escape(status_url, quote=True)
-            dial_attrs.extend([f'action="{status_xml}"', 'method="POST"'])
+            action_xml = html.escape(f"{status_url}&source=dial", quote=True)
+            dial_attrs.extend([f'action="{action_xml}"', 'method="POST"'])
+            number_cb = html.escape(f"{status_url}&source=number", quote=True)
+            number_attrs = [
+                f'statusCallback="{number_cb}"',
+                'statusCallbackMethod="POST"',
+                'statusCallbackEvent="initiated ringing answered completed"',
+            ]
 
+        number_xml = f"<Number {' '.join(number_attrs)}>" if number_attrs else "<Number>"
         return (
             '<?xml version="1.0" encoding="UTF-8"?>'
             "<Response>"
             f'<Dial {" ".join(dial_attrs)}>'
-            f"<Number>{lead_xml}</Number>"
+            f"{number_xml}{lead_xml}</Number>"
             "</Dial>"
             "</Response>"
         )

@@ -226,9 +226,10 @@ function DashboardApp() {
   const [error, setErrorState] = useState<string | null>(null);
   const [reconnectingDb, setReconnectingDb] = useState(false);
   useEffect(() => {
-    // Keepalive ping every 2 minutes to keep Railway container warm 24/7
+    // Keepalive via public /health — never hit auth-gated routes (a 401 would
+    // previously clear the session and bounce non-admin users back to login).
     const interval = setInterval(() => {
-      client.listProductTypes().catch(() => {});
+      void client.wakeBackend();
     }, 120000);
     return () => clearInterval(interval);
   }, []);
@@ -325,14 +326,6 @@ function DashboardApp() {
   const seenFollowUpIdsRef = useRef<Set<string>>(new Set());
   const seenMeetingAlertIdsRef = useRef<Set<string>>(new Set());
   const seenInterestedActivityIdRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    const onExpired = () => {
-      void logout();
-    };
-    window.addEventListener("kafi:auth-expired", onExpired);
-    return () => window.removeEventListener("kafi:auth-expired", onExpired);
-  }, [logout]);
 
   useEffect(() => {
     if (!isAdmin && tab === "users") {

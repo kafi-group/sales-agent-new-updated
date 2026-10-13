@@ -852,18 +852,46 @@ async def twilio_call_status(request: Request):
     except ValueError:
         return _twiml_response("<Response><Hangup/></Response>")
 
-    try:
-        attempt = int(request.query_params.get("attempt") or "1")
-    except ValueError:
-        attempt = 1
-
-    # Dial action webhook uses DialCallStatus; parent call uses CallStatus
+    # Number status callbacks report live progress. The Dial action (source=dial)
+    # is the only response the caller hears — and it never redials.
+    source = (request.query_params.get("source") or "").strip().lower()
+    error_code = "".join(ch for ch in str(form.get("ErrorCode") or "") if ch.isdigit())
+    # Dial action webhook uses DialCallStatus; the child leg uses CallStatus.
     status = str(
         form.get("DialCallStatus") or form.get("CallStatus") or "unknown"
     )
     duration = str(form.get("DialCallDuration") or form.get("CallDuration") or "") or None
-    call_sid = str(form.get("CallSid") or "") or None
+    call_sid = str(form.get("ParentCallSid") or form.get("CallSid") or "") or None
     dial_status = str(form.get("DialCallStatus") or "").lower()
+    leg_status_name = str(form.get("CallStatus") or "").lower()
+
+    # Ringing/initiated pings must not touch the database — a slow write here used to
+    # hold the call open until the client gave up.
+    if source == "number" and not error_code and leg_status_name in {"", "initiated", "ringing", "queued"}:
+        return _twiml_response("<Response/>")
+
+    def _failure_say() -> str | None:
+        if error_code == "13225":
+            return voice_client.say_twiml(
+                "This number is blocked by Twilio. The phone will not ring. Try another number."
+            )
+        if error_code == "13224":
+            return voice_client.say_twiml(
+                "That phone number is invalid. Check the number and try again."
+            )
+        if error_code in {"21215", "21214"}:
+            return voice_client.say_twiml(
+                "Twilio blocked this destination. Verify the number, or upgrade the account."
+            )
+        if error_code == "21408":
+            return voice_client.say_twiml(
+                "This country is blocked in Twilio geographic permissions."
+            )
+        if dial_status == "failed" or error_code or leg_status_name == "failed":
+            return voice_client.say_twiml(
+                "Could not connect this number. Check the number and Twilio voice permissions."
+            )
+        return None
 
     def _handle_status() -> str:
         """All the DB work, returned as TwiML. Runs in a worker thread (never on the event loop)."""
@@ -875,33 +903,14 @@ async def twilio_call_status(request: Request):
                 call_status=status,
                 call_duration=duration,
                 call_sid=call_sid,
+                error_code=error_code or None,
             )
-            # Helpful spoken error when PSTN dial never connected (trial / geo / invalid).
-            if dial_status == "failed":
-                return voice_client.say_twiml(
-                    "Could not connect this number. If Twilio is on a trial account, "
-                    "verify the destination number under Verified Caller IDs, or upgrade "
-                    "the account. Also enable the country under Voice Geographic Permissions."
-                )
-
-            # Hang up after ~4 rings (16s), then Dial again until answered or max attempts.
-            # If the callee hangs up / declines early, DialCallStatus is canceled/busy —
-            # that ends this attempt immediately (Twilio does not wait out the remaining timeout).
-            no_connect = dial_status in {
-                "no-answer",
-                "busy",
-                "canceled",
-                "cancelled",
-            }
-            if no_connect and attempt < voice_client.max_ring_attempts():
-                phone = calls_module.get_prepared_dial_phone(db, iid)
-                if phone:
-                    return voice_client.client_dial_twiml(
-                        str(phone),
-                        iid,
-                        attempt=attempt + 1,
-                    )
-
+            # Child-leg progress callbacks ignore the response body. Do not Say or redial.
+            if source == "number":
+                return "<Response/>"
+            spoken = _failure_say()
+            if spoken:
+                return spoken
             return "<Response><Hangup/></Response>"
         finally:
             db.close()

@@ -26,4 +26,4 @@ def get_call_leg_status(
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
     except Exception:  # noqa: BLE001 - a status lookup must never break the dialpad
-        return {"status": "unknown", "twilio_status": None, "attempts": 0}
+        return {"status": "unknown", "twilio_status": None, "attempts": 0, "error_code": None}

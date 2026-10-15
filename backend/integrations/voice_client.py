@@ -906,7 +906,20 @@ class VoiceClient:
                     },
                 }
 
-                if vapi_phone_id:
+                # Prefer live Twilio DID credentials on the call payload.
+                # Free Vapi-bought numbers hit a daily outbound cap; imported
+                # Twilio numbers may already be locked to another Vapi org.
+                # Inline phoneNumber works with our Twilio SID/token either way.
+                twilio_num = (settings.twilio_phone_number or "").strip()
+                twilio_sid = (settings.twilio_account_sid or "").strip()
+                twilio_token = (settings.twilio_auth_token or "").strip()
+                if twilio_num and twilio_sid and twilio_token:
+                    payload["phoneNumber"] = {
+                        "twilioPhoneNumber": twilio_num,
+                        "twilioAccountSid": twilio_sid,
+                        "twilioAuthToken": twilio_token,
+                    }
+                elif vapi_phone_id:
                     payload["phoneNumberId"] = vapi_phone_id
                 meta: dict[str, Any] = {
                     "persona": persona,

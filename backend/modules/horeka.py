@@ -86,11 +86,17 @@ def list_horeka_items(
     stock_status: Optional[str] = None,
     limit: int = 500,
     offset: int = 0,
+    viewer=None,
 ) -> dict[str, Any]:
     """Retrieve Horeka line items with optional filtering and summary stats."""
     seed_horeka_line_items_if_needed(db)
 
     query = select(HorekaLineItem)
+    from modules.sandbox import owner_clause
+
+    owned = owner_clause(db, viewer, HorekaLineItem.owner_user_id)
+    if owned is not None:
+        query = query.where(owned)
     if category and category.lower() != "all":
         query = query.where(HorekaLineItem.category.ilike(f"%{category}%"))
     if stock_status and stock_status.lower() != "all":
@@ -110,7 +116,10 @@ def list_horeka_items(
     items = db.scalars(query.order_by(HorekaLineItem.category, HorekaLineItem.sno, HorekaLineItem.id).offset(offset).limit(limit)).all()
 
     # Get distinct categories
-    cats = db.scalars(select(HorekaLineItem.category).distinct().order_by(HorekaLineItem.category)).all()
+    cat_query = select(HorekaLineItem.category)
+    if owned is not None:
+        cat_query = cat_query.where(owned)
+    cats = db.scalars(cat_query.distinct().order_by(HorekaLineItem.category)).all()
 
     return {
         "total": total,
@@ -139,10 +148,15 @@ def list_horeka_items(
     }
 
 
-def update_horeka_item(db: Session, item_id: int, payload: dict[str, Any]) -> dict[str, Any]:
+def update_horeka_item(db: Session, item_id: int, payload: dict[str, Any], viewer=None) -> dict[str, Any]:
     item = db.get(HorekaLineItem, item_id)
     if not item:
         raise ValueError(f"Horeka item #{item_id} not found")
+    if viewer is not None:
+        from modules.sandbox import owner_row_visible
+
+        if not owner_row_visible(db, viewer, item.owner_user_id):
+            raise ValueError(f"Horeka item #{item_id} not found")
 
     allowed_fields = {
         "category",
@@ -191,6 +205,7 @@ def create_horeka_item(db: Session, payload: dict[str, Any]) -> dict[str, Any]:
         moq=payload.get("moq", "10 Master Cartons"),
         stock_status=payload.get("stock_status", "In Stock"),
         notes=payload.get("notes"),
+        owner_user_id=payload.get("owner_user_id"),
     )
     db.add(item)
     db.commit()
@@ -203,16 +218,21 @@ def create_horeka_item(db: Session, payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def delete_horeka_item(db: Session, item_id: int) -> bool:
+def delete_horeka_item(db: Session, item_id: int, viewer=None) -> bool:
     item = db.get(HorekaLineItem, item_id)
     if not item:
         return False
+    if viewer is not None:
+        from modules.sandbox import owner_row_visible
+
+        if not owner_row_visible(db, viewer, item.owner_user_id):
+            return False
     db.delete(item)
     db.commit()
     return True
 
 
-def generate_horeka_excel(db: Session) -> bytes:
+def generate_horeka_excel(db: Session, viewer=None) -> bytes:
     """Generate a formatted Excel sheet of the full Horeka B2B Price List."""
     try:
         import openpyxl
@@ -220,7 +240,13 @@ def generate_horeka_excel(db: Session) -> bytes:
         from openpyxl.utils import get_column_letter
 
         seed_horeka_line_items_if_needed(db)
-        items = db.scalars(select(HorekaLineItem).order_by(HorekaLineItem.category, HorekaLineItem.sno, HorekaLineItem.id)).all()
+        query = select(HorekaLineItem)
+        from modules.sandbox import owner_clause
+
+        owned = owner_clause(db, viewer, HorekaLineItem.owner_user_id)
+        if owned is not None:
+            query = query.where(owned)
+        items = db.scalars(query.order_by(HorekaLineItem.category, HorekaLineItem.sno, HorekaLineItem.id)).all()
 
         wb = openpyxl.Workbook()
         ws = wb.active

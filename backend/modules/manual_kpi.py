@@ -14,8 +14,9 @@ KPI_TIMEZONE = ZoneInfo("Asia/Karachi")
 
 
 def _is_admin(user: AppUser) -> bool:
-    role = user.role.value if isinstance(user.role, AppUserRole) else str(user.role)
-    return role == AppUserRole.admin.value
+    from modules.sandbox import is_real_admin
+
+    return is_real_admin(user)
 
 
 def period_bounds(report_date: date, period: str) -> tuple[date, date]:
@@ -73,7 +74,12 @@ def list_manual_kpi_entries(
     if not admin:
         target_user_id = viewer.id
     elif user_id is not None:
-        if not db.get(AppUser, user_id):
+        target = db.get(AppUser, user_id)
+        if not target:
+            raise ValueError("User not found")
+        from modules.sandbox import is_sandbox_user
+
+        if is_sandbox_user(target):
             raise ValueError("User not found")
 
     query = db.query(ManualKpiEntry).filter(
@@ -82,6 +88,10 @@ def list_manual_kpi_entries(
     )
     if target_user_id is not None:
         query = query.filter(ManualKpiEntry.user_id == target_user_id)
+    elif admin:
+        from modules.sandbox import exclude_sandbox_actors
+
+        query = exclude_sandbox_actors(query, db, ManualKpiEntry.user_id)
 
     rows = query.order_by(
         ManualKpiEntry.activity_date.desc(),

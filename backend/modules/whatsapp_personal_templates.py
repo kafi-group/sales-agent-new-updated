@@ -7,12 +7,16 @@ from sqlalchemy.orm import Session
 from db.models import WhatsAppPersonalTemplate
 
 
-def list_templates(db: Session) -> list[WhatsAppPersonalTemplate]:
-    return (
-        db.query(WhatsAppPersonalTemplate)
-        .order_by(WhatsAppPersonalTemplate.updated_at.desc())
-        .all()
+def list_templates(db: Session, user=None) -> list[WhatsAppPersonalTemplate]:
+    from modules.sandbox import scope_owner_rows
+
+    query = scope_owner_rows(
+        db.query(WhatsAppPersonalTemplate),
+        db,
+        user,
+        WhatsAppPersonalTemplate.created_by_user_id,
     )
+    return query.order_by(WhatsAppPersonalTemplate.updated_at.desc()).all()
 
 
 def get_template(db: Session, template_id: int) -> WhatsAppPersonalTemplate | None:

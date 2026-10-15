@@ -9,7 +9,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from api.deps import get_current_user
 from api.schemas import EmailAttachmentRead
+from db.models import AppUser
 from db.session import get_db
 from modules.horeka import (
     attach_horeka_price_list_as_attachment,
@@ -65,6 +67,7 @@ def get_horeka_items(
     limit: int = Query(default=500, le=1000),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
+    user: AppUser = Depends(get_current_user),
 ):
     """List Horeka line items with optional category and search filters."""
     return list_horeka_items(
@@ -74,6 +77,7 @@ def get_horeka_items(
         stock_status=stock_status,
         limit=limit,
         offset=offset,
+        viewer=user,
     )
 
 
@@ -82,10 +86,11 @@ def update_item(
     item_id: int,
     payload: HorekaItemUpdate,
     db: Session = Depends(get_db),
+    user: AppUser = Depends(get_current_user),
 ):
     """Update line item prices, packaging, MOQ, or notes."""
     try:
-        return update_horeka_item(db, item_id, payload.model_dump(exclude_unset=True))
+        return update_horeka_item(db, item_id, payload.model_dump(exclude_unset=True), viewer=user)
     except ValueError as exc:
         raise HTTPException(404, str(exc)) from exc
 
@@ -94,27 +99,33 @@ def update_item(
 def create_item(
     payload: HorekaItemCreate,
     db: Session = Depends(get_db),
+    user: AppUser = Depends(get_current_user),
 ):
     """Create a new Horeka line item."""
-    return create_horeka_item(db, payload.model_dump())
+    from modules.sandbox import is_sandbox_user
+
+    data = payload.model_dump()
+    data["owner_user_id"] = user.id if is_sandbox_user(user) else None
+    return create_horeka_item(db, data)
 
 
 @router.delete("/items/{item_id}")
 def delete_item(
     item_id: int,
     db: Session = Depends(get_db),
+    user: AppUser = Depends(get_current_user),
 ):
     """Delete a Horeka line item."""
-    success = delete_horeka_item(db, item_id)
+    success = delete_horeka_item(db, item_id, viewer=user)
     if not success:
         raise HTTPException(404, f"Item #{item_id} not found")
     return {"ok": True, "message": f"Item #{item_id} deleted"}
 
 
 @router.get("/export-excel")
-def export_excel(db: Session = Depends(get_db)):
+def export_excel(db: Session = Depends(get_db), user: AppUser = Depends(get_current_user)):
     """Export formatted Excel spreadsheet of the Horeka B2B Price List."""
-    excel_bytes = generate_horeka_excel(db)
+    excel_bytes = generate_horeka_excel(db, viewer=user)
     return Response(
         content=excel_bytes,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

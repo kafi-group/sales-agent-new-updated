@@ -1043,6 +1043,7 @@ def get_all_urgent_unreplied_threads(db: Any, viewer: AppUser) -> list[dict[str,
     uname = (viewer.username or "").strip().lower()
     fname = (getattr(viewer, "full_name", None) or "").strip().lower()
     is_asim = uname == "asim" or uname.startswith("asim") or "asim" in fname
+    from modules.sandbox import is_sandbox_user
 
     asim_shared_emails = frozenset(
         {
@@ -1052,7 +1053,7 @@ def get_all_urgent_unreplied_threads(db: Any, viewer: AppUser) -> list[dict[str,
         }
     )
 
-    if role != AppUserRole.admin.value and not is_asim:
+    if is_sandbox_user(viewer) or (role != AppUserRole.admin.value and not is_asim):
         return get_urgent_unreplied_threads(viewer)
 
     users = (
@@ -1063,7 +1064,7 @@ def get_all_urgent_unreplied_threads(db: Any, viewer: AppUser) -> list[dict[str,
         .all()
     )
     if role == AppUserRole.admin.value:
-        targets = [u for u in users if u.is_active]
+        targets = [u for u in users if u.is_active and not is_sandbox_user(u)]
     else:
         # Asim — only the three shared sales mailboxes
         by_email: dict[str, Any] = {}

@@ -42,8 +42,7 @@ def list_personal_whatsapp_templates(
     db: Session = Depends(get_db),
     user: AppUser = Depends(get_current_user),
 ) -> list[WhatsAppPersonalTemplateRead]:
-    _ = user
-    return [_personal_template_read(t) for t in personal_templates_module.list_templates(db)]
+    return [_personal_template_read(t) for t in personal_templates_module.list_templates(db, user)]
 
 
 @router.post("/templates", response_model=WhatsAppPersonalTemplateRead, status_code=201)
@@ -78,6 +77,11 @@ def update_personal_whatsapp_template(
     db: Session = Depends(get_db),
     user: AppUser = Depends(get_current_user),
 ) -> WhatsAppPersonalTemplateRead:
+    existing = personal_templates_module.get_template(db, template_id)
+    from modules.sandbox import owner_row_visible
+
+    if not existing or not owner_row_visible(db, user, existing.created_by_user_id):
+        raise HTTPException(404, "Personal WhatsApp template not found")
     try:
         record = personal_templates_module.update_template(
             db,
@@ -105,6 +109,11 @@ def delete_personal_whatsapp_template(
     db: Session = Depends(get_db),
     user: AppUser = Depends(get_current_user),
 ) -> dict[str, bool]:
+    existing = personal_templates_module.get_template(db, template_id)
+    from modules.sandbox import owner_row_visible
+
+    if not existing or not owner_row_visible(db, user, existing.created_by_user_id):
+        raise HTTPException(404, "Personal WhatsApp template not found")
     ok = personal_templates_module.delete_template(db, template_id)
     if not ok:
         raise HTTPException(404, "Personal WhatsApp template not found")

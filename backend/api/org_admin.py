@@ -21,6 +21,13 @@ def _require_pin(pin: str | None) -> None:
         raise HTTPException(403, "Invalid access code. Please use access code: 07860")
 
 
+def _block_sandbox_settings(user: AppUser) -> None:
+    from modules.sandbox import is_sandbox_user
+
+    if is_sandbox_user(user):
+        raise HTTPException(403, "This test account cannot change company settings")
+
+
 class PinBody(BaseModel):
     pin: str = Field(..., min_length=1)
 
@@ -93,6 +100,7 @@ def list_master_lists_admin(
     _ = user
     _require_pin(pin)
     from modules import auth as auth_module
+    from modules.sandbox import is_sandbox_user
 
     users = [
         {
@@ -102,6 +110,7 @@ def list_master_lists_admin(
             "role": u.role.value if hasattr(u.role, "value") else str(u.role),
         }
         for u in auth_module.list_users(db)
+        if (is_sandbox_user(user) and u.id == user.id) or (not is_sandbox_user(user) and not is_sandbox_user(u))
     ]
     return {
         "master_lists": org.get_master_lists(include_disabled=True),
@@ -118,6 +127,7 @@ def upsert_master_list(
 ) -> dict[str, Any]:
     _ = user
     _require_pin(payload.pin)
+    _block_sandbox_settings(user)
     try:
         row = org.upsert_master_list(
             key=payload.key,
@@ -137,6 +147,7 @@ def delete_master_list(
 ) -> dict[str, Any]:
     _ = user
     _require_pin(payload.pin)
+    _block_sandbox_settings(user)
     try:
         org.delete_master_list(payload.key)
     except ValueError as exc:
@@ -151,6 +162,7 @@ def set_user_master_access(
 ) -> dict[str, Any]:
     _ = user
     _require_pin(payload.pin)
+    _block_sandbox_settings(user)
     keys = org.set_user_master_access(payload.user_id, payload.master_list_keys)
     return {"ok": True, "user_id": payload.user_id, "master_list_keys": keys}
 
@@ -162,6 +174,7 @@ def set_agent_master_access(
 ) -> dict[str, Any]:
     _ = user
     _require_pin(payload.pin)
+    _block_sandbox_settings(user)
     try:
         keys = org.set_agent_master_access(payload.agent_id, payload.master_list_keys)
     except ValueError as exc:
@@ -191,6 +204,7 @@ def upsert_ai_agent(
 ) -> dict[str, Any]:
     _ = user
     _require_pin(payload.pin)
+    _block_sandbox_settings(user)
     try:
         row = org.upsert_ai_sales_agent(
             agent_id=payload.id,
@@ -224,6 +238,7 @@ def delete_ai_agent(
 ) -> dict[str, Any]:
     _ = user
     _require_pin(payload.pin)
+    _block_sandbox_settings(user)
     try:
         org.delete_ai_sales_agent(payload.id)
     except ValueError as exc:

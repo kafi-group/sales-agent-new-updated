@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from api.deps import get_current_user, get_db, get_session_token, require_admin
+from api.deps import get_current_user, get_db, get_session_token, require_real_admin
 from db.models import AppUser, AppUserRole
 from modules import auth as auth_module
 
@@ -47,6 +47,7 @@ class UserRead(BaseModel):
     full_name: str
     role: str
     is_active: bool
+    is_sandbox: bool = False
     mailbox_email: str | None = None
     mailbox_display_name: str | None = None
     mailbox_enabled: bool = True
@@ -69,6 +70,7 @@ def _to_user_read(user: AppUser) -> UserRead:
         full_name=user.full_name,
         role=user.role.value if isinstance(user.role, AppUserRole) else str(user.role),
         is_active=user.is_active,
+        is_sandbox=bool(getattr(user, "is_sandbox", False)),
         mailbox_email=user.mailbox_email,
         mailbox_display_name=user.mailbox_display_name,
         mailbox_enabled=bool(user.mailbox_enabled),
@@ -133,7 +135,7 @@ def me(user: AppUser = Depends(get_current_user)) -> Any:
 @router.get("/users", response_model=list[UserRead])
 def list_users(
     db: Session = Depends(get_db),
-    _: AppUser = Depends(require_admin),
+    _: AppUser = Depends(require_real_admin),
 ) -> Any:
     return [_to_user_read(u) for u in auth_module.list_users(db)]
 
@@ -141,18 +143,24 @@ def list_users(
 @router.get("/assignees", response_model=list[UserRead])
 def list_assignees(
     db: Session = Depends(get_db),
-    _: AppUser = Depends(get_current_user),
+    user: AppUser = Depends(get_current_user),
 ) -> Any:
-    """Active sales users that can be assigned leads or analyzed in Sales Help Manager."""
-    users = auth_module.list_users(db)
-    return [_to_user_read(u) for u in users if u.is_active]
+    """Active users that can be assigned leads. Sandbox only sees itself."""
+    from modules.sandbox import is_sandbox_user
+
+    users = [u for u in auth_module.list_users(db) if u.is_active]
+    if is_sandbox_user(user):
+        users = [u for u in users if u.id == user.id]
+    else:
+        users = [u for u in users if not is_sandbox_user(u)]
+    return [_to_user_read(u) for u in users]
 
 
 @router.post("/users", response_model=UserRead, status_code=201)
 def create_user(
     body: UserCreateRequest,
     db: Session = Depends(get_db),
-    _: AppUser = Depends(require_admin),
+    _: AppUser = Depends(require_real_admin),
 ) -> Any:
     try:
         user = auth_module.create_user(
@@ -175,7 +183,7 @@ def update_user(
     user_id: int,
     body: UserUpdateRequest,
     db: Session = Depends(get_db),
-    admin: AppUser = Depends(require_admin),
+    admin: AppUser = Depends(require_real_admin),
 ) -> Any:
     if admin.id == user_id and body.is_active is False:
         raise HTTPException(status_code=400, detail="You cannot deactivate your own account")
@@ -204,7 +212,7 @@ def update_user(
 def delete_user(
     user_id: int,
     db: Session = Depends(get_db),
-    admin: AppUser = Depends(require_admin),
+    admin: AppUser = Depends(require_real_admin),
 ) -> Response:
     if admin.id == user_id:
         raise HTTPException(status_code=400, detail="You cannot delete your own account")
@@ -223,7 +231,7 @@ def impersonate_user(
     request: Request,
     response: Response,
     db: Session = Depends(get_db),
-    admin: AppUser = Depends(require_admin),
+    admin: AppUser = Depends(require_real_admin),
 ) -> Any:
     """Admin opens the dashboard as another active user (same data scope as that user)."""
     if admin.id == user_id:

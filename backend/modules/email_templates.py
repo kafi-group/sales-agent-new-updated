@@ -9,7 +9,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from config import settings
-from db.models import Buyer, Contact, EmailTemplate
+from db.models import AppUser, Buyer, Contact, EmailTemplate
 
 SUPPORTED_PLACEHOLDERS = [
     "company_name",
@@ -72,8 +72,12 @@ def render_template_text(text: str, *, buyer: Buyer, contact: Contact) -> str:
     return rendered
 
 
-def list_templates(db: Session) -> list[EmailTemplate]:
-    return db.query(EmailTemplate).order_by(EmailTemplate.updated_at.desc()).all()
+def list_templates(db: Session, user: AppUser | None = None) -> list[EmailTemplate]:
+    query = db.query(EmailTemplate)
+    from modules.sandbox import scope_owner_rows
+
+    query = scope_owner_rows(query, db, user, EmailTemplate.owner_user_id)
+    return query.order_by(EmailTemplate.updated_at.desc()).all()
 
 
 def get_template(db: Session, template_id: int) -> EmailTemplate | None:
@@ -101,6 +105,7 @@ def create_template(db: Session, data: dict) -> EmailTemplate:
         subject=data["subject"],
         body=data["body"],
         attachments=resolved,
+        owner_user_id=data.get("owner_user_id"),
     )
     db.add(record)
     db.commit()

@@ -330,7 +330,7 @@ function DashboardApp() {
   const seenInterestedActivityIdRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!isAdmin && tab === "users") {
+    if ((!isAdmin || user?.is_sandbox) && tab === "users") {
       setTab("inbox");
     }
     if (!isAdmin && tab === "settings") {
@@ -339,7 +339,7 @@ function DashboardApp() {
     if ((tab === "ai-mode" || tab === "leads") && !canOpenRestrictedAiTab(isAdmin)) {
       setTab(isAdmin ? "settings" : "inbox");
     }
-  }, [isAdmin, tab]);
+  }, [isAdmin, tab, user?.is_sandbox]);
 
   useEffect(() => {
     if (!isWorkspaceOnlySalesUser) return;
@@ -1565,7 +1565,9 @@ function DashboardApp() {
         { id: "helpful-guidance", label: "SALES HELP MANAGER", count: 0 },
         { id: "target-workspace" as const, label: "Target and Workspace", count: 0 },
         { id: "kpi", label: "KPI", count: 0 },
-        ...(isAdmin ? [{ id: "users" as const, label: "Users", count: 0 }] : []),
+        ...(isAdmin && !user?.is_sandbox
+          ? [{ id: "users" as const, label: "Users", count: 0 }]
+          : []),
       ],
     },
     // Indexes at the end (with User Manual inside)
@@ -2069,7 +2071,7 @@ function DashboardApp() {
             )}
             {tab === "ai-train" && <AiTrainPage onError={setError} />}
             {tab === "kpi" && <KpiPage onError={setError} />}
-            {tab === "users" && isAdmin && (
+            {tab === "users" && isAdmin && !user?.is_sandbox && (
               <UsersPage
                 onError={setError}
                 onUsersChanged={() => {

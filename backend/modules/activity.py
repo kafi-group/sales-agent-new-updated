@@ -587,15 +587,16 @@ def get_kpi_counts_for_range(
     user_id: int | None = None,
 ) -> dict[str, int]:
     """Sum KPI count buckets for an arbitrary UTC window (one user or team)."""
-    role = viewer.role.value if isinstance(viewer.role, AppUserRole) else str(viewer.role)
-    is_admin = role == AppUserRole.admin.value
+    from modules.sandbox import exclude_sandbox_actors, is_real_admin, is_sandbox_user
+
+    is_admin = is_real_admin(viewer)
 
     target_user_id = user_id
-    if not is_admin:
+    if not is_admin or is_sandbox_user(viewer):
         target_user_id = viewer.id
     elif user_id is not None:
         target = db.get(AppUser, user_id)
-        if not target:
+        if not target or is_sandbox_user(target):
             raise ValueError("User not found")
 
     query = db.query(UserActivityEvent).filter(
@@ -604,6 +605,8 @@ def get_kpi_counts_for_range(
     )
     if target_user_id is not None:
         query = query.filter(UserActivityEvent.user_id == target_user_id)
+    else:
+        query = exclude_sandbox_actors(query, db, UserActivityEvent.user_id)
 
     events = _with_unmarked_answered_calls(db, query.all())
     email_by_user = _email_send_counts_by_user(
@@ -618,6 +621,13 @@ def get_kpi_counts_for_range(
         end_utc=end_utc,
         user_id=target_user_id,
     )
+    if target_user_id is None:
+        from modules.sandbox import sandbox_user_ids
+
+        hidden = set(sandbox_user_ids(db))
+        if hidden:
+            email_by_user = {k: v for k, v in email_by_user.items() if k not in hidden}
+            wa_by_user = {k: v for k, v in wa_by_user.items() if k not in hidden}
 
     counts = _empty_counts()
     target_companies: set[str] = set()
@@ -655,16 +665,17 @@ def get_kpi_report(
     from sqlalchemy.orm import joinedload
     from db.models import Buyer, Interaction
 
-    role = viewer.role.value if isinstance(viewer.role, AppUserRole) else str(viewer.role)
-    is_admin = role == AppUserRole.admin.value
+    from modules.sandbox import exclude_sandbox_actors, is_real_admin, is_sandbox_user
+
+    is_admin = is_real_admin(viewer)
     normalized_period = _normalize_period(period)
 
     target_user_id = user_id
-    if not is_admin:
+    if not is_admin or is_sandbox_user(viewer):
         target_user_id = viewer.id
     elif user_id is not None:
         target = db.get(AppUser, user_id)
-        if not target:
+        if not target or is_sandbox_user(target):
             raise ValueError("User not found")
 
     start_date, end_date, start_utc, end_utc = period_bounds(report_date, normalized_period)
@@ -678,6 +689,8 @@ def get_kpi_report(
     )
     if target_user_id is not None:
         query = query.filter(UserActivityEvent.user_id == target_user_id)
+    else:
+        query = exclude_sandbox_actors(query, db, UserActivityEvent.user_id)
 
     events = _with_unmarked_answered_calls(db, query.all())
     email_by_user = _email_send_counts_by_user(
@@ -692,6 +705,13 @@ def get_kpi_report(
         end_utc=end_utc,
         user_id=target_user_id,
     )
+    if target_user_id is None:
+        from modules.sandbox import sandbox_user_ids
+
+        hidden = set(sandbox_user_ids(db))
+        if hidden:
+            email_by_user = {k: v for k, v in email_by_user.items() if k not in hidden}
+            wa_by_user = {k: v for k, v in wa_by_user.items() if k not in hidden}
     user_ids = {e.user_id for e in events} | set(email_by_user.keys()) | set(wa_by_user.keys())
     if target_user_id is not None:
         user_ids.add(target_user_id)

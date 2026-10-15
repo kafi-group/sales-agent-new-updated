@@ -10,7 +10,7 @@ from typing import Any
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from db.models import Buyer, Contact, CustomLeadModule
+from db.models import AppUser, Buyer, Contact, CustomLeadModule
 from modules.buyers import create_buyer, create_contact
 
 logger = logging.getLogger(__name__)
@@ -81,6 +81,7 @@ def list_custom_modules(
     *,
     master_type: str | None = "fmcg",
     assigned_to_user_id: int | None = None,
+    viewer: AppUser | None = None,
 ) -> list[dict[str, Any]]:
     """List all custom lead modules with live lead counts.
 
@@ -90,6 +91,10 @@ def list_custom_modules(
     from sqlalchemy import func as sa_func
 
     query = db.query(CustomLeadModule)
+    if viewer is not None:
+        from modules.sandbox import scope_owner_rows
+
+        query = scope_owner_rows(query, db, viewer, CustomLeadModule.owner_user_id)
     if not include_disabled:
         query = query.filter(CustomLeadModule.is_enabled.is_(True))
     modules = query.order_by(CustomLeadModule.order_index.asc(), CustomLeadModule.id.asc()).all()
@@ -111,6 +116,10 @@ def list_custom_modules(
             count_q = count_q.filter(sa_func.lower(Buyer.master_type) == mt)
     if assigned_to_user_id is not None:
         count_q = count_q.filter(Buyer.assigned_to_user_id == assigned_to_user_id)
+    else:
+        from modules.leads import _hide_sandbox_buyers
+
+        count_q = _hide_sandbox_buyers(count_q)
 
     source_counts: dict[str, int] = dict(count_q.group_by(sa_func.lower(Buyer.source)).all())
 
@@ -135,6 +144,20 @@ def list_custom_modules(
             }
         )
     return result
+
+
+def _module_for(db: Session, key: str) -> CustomLeadModule:
+    module = db.query(CustomLeadModule).filter(CustomLeadModule.key == key.strip().lower()).first()
+    if not module:
+        raise ValueError(f"Module with key '{key}' not found")
+    return module
+
+
+def assert_module_visible(db: Session, module: CustomLeadModule, user: AppUser) -> None:
+    from modules.sandbox import owner_row_visible
+
+    if not owner_row_visible(db, user, module.owner_user_id):
+        raise ValueError("Module not found")
 
 
 def create_custom_module(db: Session, payload: dict[str, Any]) -> dict[str, Any]:
@@ -167,6 +190,7 @@ def create_custom_module(db: Session, payload: dict[str, Any]) -> dict[str, Any]
         is_builtin=False,
         is_enabled=True,
         order_index=max_order + 1,
+        owner_user_id=payload.get("owner_user_id"),
     )
     db.add(module)
     db.commit()
@@ -186,11 +210,11 @@ def create_custom_module(db: Session, payload: dict[str, Any]) -> dict[str, Any]
     }
 
 
-def update_custom_module(db: Session, key: str, payload: dict[str, Any]) -> dict[str, Any]:
+def update_custom_module(db: Session, key: str, payload: dict[str, Any], viewer: AppUser | None = None) -> dict[str, Any]:
     """Update settings or toggle visibility for a custom/built-in module."""
-    module = db.query(CustomLeadModule).filter(CustomLeadModule.key == key.strip().lower()).first()
-    if not module:
-        raise ValueError(f"Module with key '{key}' not found")
+    module = _module_for(db, key)
+    if viewer is not None:
+        assert_module_visible(db, module, viewer)
 
     if "name" in payload and payload["name"]:
         module.name = str(payload["name"]).strip()
@@ -208,7 +232,14 @@ def update_custom_module(db: Session, key: str, payload: dict[str, Any]) -> dict
     db.commit()
     db.refresh(module)
 
-    count = db.query(Buyer).filter(func.lower(Buyer.source) == module.key.lower()).count()
+    count_q = db.query(Buyer).filter(func.lower(Buyer.source) == module.key.lower())
+    if module.owner_user_id is not None:
+        count_q = count_q.filter(Buyer.assigned_to_user_id == module.owner_user_id)
+    else:
+        from modules.leads import _hide_sandbox_buyers
+
+        count_q = _hide_sandbox_buyers(count_q)
+    count = count_q.count()
 
     return {
         "id": module.id,
@@ -224,21 +255,25 @@ def update_custom_module(db: Session, key: str, payload: dict[str, Any]) -> dict
     }
 
 
-def delete_custom_module(db: Session, key: str) -> dict[str, Any]:
+def delete_custom_module(db: Session, key: str, viewer: AppUser | None = None) -> dict[str, Any]:
     """Delete a custom module and reset its leads back to old_clients."""
-    key_clean = key.strip().lower()
-    module = db.query(CustomLeadModule).filter(CustomLeadModule.key == key_clean).first()
-    if not module:
-        raise ValueError(f"Module with key '{key}' not found")
+    module = _module_for(db, key)
+    if viewer is not None:
+        assert_module_visible(db, module, viewer)
     if module.is_builtin:
         raise ValueError("Built-in system lists cannot be deleted. You can disable them to hide from sidebar.")
 
-    # Re-route leads to old_clients
-    leads_count = db.query(Buyer).filter(func.lower(Buyer.source) == key_clean).count()
+    key_clean = module.key.strip().lower()
+    lead_q = db.query(Buyer).filter(func.lower(Buyer.source) == key_clean)
+    if module.owner_user_id is not None:
+        lead_q = lead_q.filter(Buyer.assigned_to_user_id == module.owner_user_id)
+    else:
+        from modules.leads import _hide_sandbox_buyers
+
+        lead_q = _hide_sandbox_buyers(lead_q)
+    leads_count = lead_q.count()
     if leads_count > 0:
-        db.query(Buyer).filter(func.lower(Buyer.source) == key_clean).update(
-            {Buyer.source: "old_clients"}, synchronize_session=False
-        )
+        lead_q.update({Buyer.source: "old_clients"}, synchronize_session=False)
 
     db.delete(module)
     db.commit()

@@ -3904,6 +3904,21 @@ def import_candidates(
                         should_replace = existing_score < 8 or import_score > existing_score
 
                     if should_replace:
+                        from modules.sandbox import sandbox_user_ids
+
+                        sandbox_ids = set(sandbox_user_ids(db))
+                        if (
+                            assigned_to_user_id in sandbox_ids
+                            and existing.assigned_to_user_id != assigned_to_user_id
+                        ):
+                            skipped.append(
+                                {
+                                    "company_name": name,
+                                    "reason": "Already in your leads",
+                                }
+                            )
+                            _checkpoint_commit()
+                            continue
                         if assigned_to_user_id is not None and existing.assigned_to_user_id not in (
                             None,
                             assigned_to_user_id,

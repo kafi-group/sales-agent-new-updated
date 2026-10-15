@@ -716,6 +716,7 @@ export interface AppUser {
   full_name: string;
   role: "admin" | "user" | string;
   is_active: boolean;
+  is_sandbox?: boolean;
   mailbox_email?: string | null;
   mailbox_display_name?: string | null;
   mailbox_enabled?: boolean;

@@ -16,6 +16,7 @@ from api.schemas import (
 from db.models import AppUser
 from modules import email_templates as templates_module
 from modules.audit import log_action
+from modules.sandbox import is_sandbox_user, owner_row_visible
 
 router = APIRouter(prefix="/email-templates", tags=["email-templates"])
 
@@ -35,8 +36,11 @@ def _template_read(record) -> EmailTemplateRead:
 
 
 @router.get("", response_model=list[EmailTemplateRead])
-def list_email_templates(db: Session = Depends(get_db)):
-    return [_template_read(t) for t in templates_module.list_templates(db)]
+def list_email_templates(
+    db: Session = Depends(get_db),
+    user: AppUser = Depends(get_current_user),
+):
+    return [_template_read(t) for t in templates_module.list_templates(db, user)]
 
 
 @router.post("", response_model=EmailTemplateRead, status_code=201)
@@ -48,7 +52,13 @@ def create_email_template(
     from modules import activity as activity_module
 
     try:
-        record = templates_module.create_template(db, payload.model_dump())
+        record = templates_module.create_template(
+            db,
+            {
+                **payload.model_dump(),
+                "owner_user_id": user.id if is_sandbox_user(user) else None,
+            },
+        )
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
     log_action(
@@ -133,10 +143,13 @@ def draft_email_from_prompt(
     return EmailComposeDraftResponse(**result)
 
 
-@router.get("/{template_id}", response_model=EmailTemplateRead)
-def get_email_template(template_id: int, db: Session = Depends(get_db)):
+def get_email_template(
+    template_id: int,
+    db: Session = Depends(get_db),
+    user: AppUser = Depends(get_current_user),
+):
     record = templates_module.get_template(db, template_id)
-    if not record:
+    if not record or not owner_row_visible(db, user, record.owner_user_id):
         raise HTTPException(404, "Template not found")
     return _template_read(record)
 
@@ -146,7 +159,11 @@ def update_email_template(
     template_id: int,
     payload: EmailTemplateUpdate,
     db: Session = Depends(get_db),
+    user: AppUser = Depends(get_current_user),
 ):
+    existing = templates_module.get_template(db, template_id)
+    if not existing or not owner_row_visible(db, user, existing.owner_user_id):
+        raise HTTPException(404, "Template not found")
     try:
         record = templates_module.update_template(
             db, template_id, payload.model_dump(exclude_unset=True)
@@ -160,7 +177,14 @@ def update_email_template(
 
 
 @router.delete("/{template_id}", status_code=204)
-def delete_email_template(template_id: int, db: Session = Depends(get_db)):
+def delete_email_template(
+    template_id: int,
+    db: Session = Depends(get_db),
+    user: AppUser = Depends(get_current_user),
+):
+    existing = templates_module.get_template(db, template_id)
+    if not existing or not owner_row_visible(db, user, existing.owner_user_id):
+        raise HTTPException(404, "Template not found")
     if not templates_module.delete_template(db, template_id):
         raise HTTPException(404, "Template not found")
     log_action(db, entity_type="email_template", entity_id=template_id, action="deleted")

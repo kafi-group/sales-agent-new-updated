@@ -208,9 +208,13 @@ def _is_admin_user(user: AppUser) -> bool:
 
 
 def lifecycle_assignee_scope(user: AppUser | None) -> int | None:
-    """Non-admins only see leads assigned to them in Company lifecycle."""
+    """Non-admins and sandbox admins only see leads assigned to them."""
     if user is None:
         return None
+    from modules.sandbox import is_sandbox_user
+
+    if is_sandbox_user(user):
+        return user.id
     if _is_admin_user(user):
         return None
     return user.id
@@ -219,7 +223,26 @@ def lifecycle_assignee_scope(user: AppUser | None) -> int | None:
 def _apply_buyer_assignee_scope(query, assigned_to_user_id: int | None):
     if assigned_to_user_id is not None:
         return query.filter(Buyer.assigned_to_user_id == assigned_to_user_id)
-    return query
+    from modules.sandbox import exclude_sandbox_assignees
+
+    session = query.session
+    if session is None:
+        return query
+    return exclude_sandbox_assignees(query, session, Buyer.assigned_to_user_id)
+
+
+def _activity_owner_clause(db: Session, viewer: AppUser, column):
+    """Sandbox sees only its events. Company views hide sandbox events."""
+    from sqlalchemy import or_
+
+    from modules.sandbox import is_sandbox_user, sandbox_user_ids
+
+    if is_sandbox_user(viewer):
+        return column == viewer.id
+    hidden = sandbox_user_ids(db)
+    if not hidden:
+        return None
+    return or_(column.is_(None), column.notin_(hidden))
 
 
 _AUTO_REPLY_SETTING_KEYS = frozenset(
@@ -2621,6 +2644,13 @@ def list_call_activities(
     q = db.query(AiCallActivityLog)
     if viewer is not None and not _is_admin_user(viewer):
         q = q.filter(AiCallActivityLog.user_id == viewer.id)
+    elif viewer is not None:
+        from modules.sandbox import exclude_sandbox_actors, is_sandbox_user
+
+        if is_sandbox_user(viewer):
+            q = q.filter(AiCallActivityLog.user_id == viewer.id)
+        else:
+            q = exclude_sandbox_actors(q, db, AiCallActivityLog.user_id)
     total_calls = q.with_entities(func.count(AiCallActivityLog.id)).scalar() or 0
     rows = (
         q.order_by(AiCallActivityLog.created_at.desc(), AiCallActivityLog.id.desc())
@@ -2910,6 +2940,13 @@ def list_follow_up_activities(
     q = db.query(AiFollowUpActivityLog)
     if viewer is not None and not _is_admin_user(viewer):
         q = q.filter(AiFollowUpActivityLog.user_id == viewer.id)
+    elif viewer is not None:
+        from modules.sandbox import exclude_sandbox_actors, is_sandbox_user
+
+        if is_sandbox_user(viewer):
+            q = q.filter(AiFollowUpActivityLog.user_id == viewer.id)
+        else:
+            q = exclude_sandbox_actors(q, db, AiFollowUpActivityLog.user_id)
     total_events = q.with_entities(func.count(AiFollowUpActivityLog.id)).scalar() or 0
     rows = (
         q.order_by(
@@ -3396,14 +3433,19 @@ def list_interested_activities(
     after_id: int | None = None,
     assigned_to_user_id: int | None = None,
 ) -> dict[str, Any]:
-    from sqlalchemy import func
+    from sqlalchemy import and_, func
 
-    is_admin = _is_admin_user(viewer)
+    from modules.sandbox import is_real_admin
+
+    is_admin = is_real_admin(viewer)
     total_in_list = _interested_clients_list_count(
         db, assigned_to_user_id=assigned_to_user_id
     )
 
     placed_filter = AiInterestedActivityLog.event_type == "placed"
+    owner_clause = _activity_owner_clause(db, viewer, AiInterestedActivityLog.user_id)
+    if owner_clause is not None:
+        placed_filter = and_(placed_filter, owner_clause)
     total_events = (
         db.query(func.count(AiInterestedActivityLog.id)).filter(placed_filter).scalar()
         or 0
@@ -3485,7 +3527,10 @@ def _not_interested_clients_count(
     if not ids:
         return 0
     if assigned_to_user_id is None:
-        return len(ids)
+        from modules.sandbox import exclude_sandbox_assignees
+
+        q = db.query(Buyer.id).filter(Buyer.id.in_(ids))
+        return exclude_sandbox_assignees(q, db, Buyer.assigned_to_user_id).count()
     return (
         db.query(Buyer.id)
         .filter(
@@ -3563,14 +3608,19 @@ def list_not_interested_activities(
     after_id: int | None = None,
     assigned_to_user_id: int | None = None,
 ) -> dict[str, Any]:
-    from sqlalchemy import func
+    from sqlalchemy import and_, func
 
-    is_admin = _is_admin_user(viewer)
+    from modules.sandbox import is_real_admin
+
+    is_admin = is_real_admin(viewer)
     total_in_list = _not_interested_clients_count(
         db, assigned_to_user_id=assigned_to_user_id
     )
 
     placed_filter = AiNotInterestedActivityLog.event_type == "placed"
+    owner_clause = _activity_owner_clause(db, viewer, AiNotInterestedActivityLog.user_id)
+    if owner_clause is not None:
+        placed_filter = and_(placed_filter, owner_clause)
     total_events = (
         db.query(func.count(AiNotInterestedActivityLog.id)).filter(placed_filter).scalar()
         or 0

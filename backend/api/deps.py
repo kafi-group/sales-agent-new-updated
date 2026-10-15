@@ -17,6 +17,7 @@ __all__ = [
     "get_current_user",
     "get_current_user_released",
     "require_admin",
+    "require_real_admin",
     "verify_agent_bridge_secret",
 ]
 
@@ -106,6 +107,7 @@ def get_current_user_released(
             user.mailbox_password_encrypted,
             user.mailbox_display_name,
             user.mailbox_enabled,
+            user.is_sandbox,
         )
         db.expunge(user)
         return user
@@ -116,6 +118,15 @@ def get_current_user_released(
 def require_admin(user: AppUser = Depends(get_current_user)) -> AppUser:
     role = user.role.value if isinstance(user.role, AppUserRole) else str(user.role)
     if role != AppUserRole.admin.value:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return user
+
+
+def require_real_admin(user: AppUser = Depends(get_current_user)) -> AppUser:
+    """Company admin. Sandbox test accounts cannot manage other people."""
+    from modules.sandbox import is_real_admin
+
+    if not is_real_admin(user):
         raise HTTPException(status_code=403, detail="Admin access required")
     return user
 

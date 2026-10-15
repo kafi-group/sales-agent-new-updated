@@ -102,7 +102,7 @@ export function AppTopActions({
   }, []);
 
   useEffect(() => {
-    if (!isAdmin || impersonating) {
+    if (!isAdmin || impersonating || user?.is_sandbox) {
       setSwitchUsers([]);
       return;
     }
@@ -112,7 +112,7 @@ export function AppTopActions({
         setSwitchUsers(rows.filter((u) => u.is_active && u.role !== "admin")),
       )
       .catch(() => setSwitchUsers([]));
-  }, [isAdmin, impersonating]);
+  }, [isAdmin, impersonating, user?.is_sandbox]);
 
   useEffect(() => {
     if (!settingsOpen && !switchMenuOpen) return;

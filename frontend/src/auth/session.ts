@@ -8,6 +8,7 @@ export interface AuthUser {
   full_name: string;
   role: AppRole;
   is_active: boolean;
+  is_sandbox?: boolean;
 }
 
 /** Bearer backup when httpOnly cookie is missing (some proxy / browser edge cases). */

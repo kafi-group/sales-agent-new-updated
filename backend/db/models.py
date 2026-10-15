@@ -422,6 +422,9 @@ class EmailTemplate(Base):
     subject: Mapped[str] = mapped_column(String(500), nullable=False)
     body: Mapped[str] = mapped_column(Text, nullable=False)
     attachments: Mapped[list] = mapped_column(JSONB, default=list)
+    owner_user_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("app_users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -574,6 +577,8 @@ class AppUser(Base):
     )
     password_hash: Mapped[str] = mapped_column(String(512), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Admin screens with a private empty workspace (Haris test account).
+    is_sandbox: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     # Per-user cPanel mailbox (IMAP/SMTP). Shared hosts live in env; credentials here.
     mailbox_email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
     mailbox_password_encrypted: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -1001,6 +1006,9 @@ class HorekaLineItem(Base):
     moq: Mapped[Optional[str]] = mapped_column(String(100), default="10 Master Cartons")
     stock_status: Mapped[str] = mapped_column(String(50), default="In Stock")
     notes: Mapped[Optional[str]] = mapped_column(Text)
+    owner_user_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("app_users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -1045,6 +1053,9 @@ class CustomLeadModule(Base):
     is_builtin: Mapped[bool] = mapped_column(Boolean, default=False)
     is_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     order_index: Mapped[int] = mapped_column(Integer, default=0)
+    owner_user_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("app_users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

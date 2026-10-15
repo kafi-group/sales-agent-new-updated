@@ -110,6 +110,12 @@ def _expunge_mailbox_user(db, other: AppUser) -> AppUser:
 
 def _resolve_mailbox_user(acting: AppUser, mailbox_user_id: int | None) -> AppUser:
     """Admin may open any mailbox. Asim may open marketing@ / info@ / essence@ only."""
+    from modules.sandbox import is_sandbox_user
+
+    if is_sandbox_user(acting):
+        if mailbox_user_id and int(mailbox_user_id) != int(acting.id):
+            raise HTTPException(403, "This test account can only open its own mailbox")
+        return acting
     if not mailbox_user_id or int(mailbox_user_id) == int(acting.id):
         return acting
     role = acting.role.value if isinstance(acting.role, AppUserRole) else str(acting.role)
@@ -118,6 +124,8 @@ def _resolve_mailbox_user(acting: AppUser, mailbox_user_id: int | None) -> AppUs
         other = db.get(AppUser, int(mailbox_user_id))
         if not other:
             return acting
+        if is_sandbox_user(other):
+            raise HTTPException(403, "That mailbox belongs to a private test account")
         if role == AppUserRole.admin.value:
             return _expunge_mailbox_user(db, other)
         if _is_asim(acting):

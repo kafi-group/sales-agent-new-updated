@@ -88,6 +88,10 @@ def save_scorecard_config(
     _admin: AppUser = Depends(require_admin),
 ):
     _check_pin(body.pin)
+    from modules.sandbox import is_sandbox_user
+
+    if is_sandbox_user(_admin):
+        raise HTTPException(403, "This test account cannot change company KPI settings")
     try:
         scorecard.save_config(body.config)
     except ValueError as exc:

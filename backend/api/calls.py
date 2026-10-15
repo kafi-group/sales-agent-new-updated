@@ -19,7 +19,7 @@ from api.schemas import (
     TwilioBalanceRead,
     VoiceTokenRead,
 )
-from db.models import AppUser, AppUserRole, Contact, Interaction
+from db.models import AppUser, Contact, Interaction
 from db.session import SessionLocal
 from integrations.voice_client import voice_client
 from modules import calls as calls_module
@@ -29,8 +29,9 @@ from config import settings
 
 
 def _is_admin(user: AppUser) -> bool:
-    role = user.role.value if isinstance(user.role, AppUserRole) else str(user.role)
-    return role == AppUserRole.admin.value
+    from modules.sandbox import is_real_admin
+
+    return is_real_admin(user)
 
 
 def _require_lead_access(db: Session, user: AppUser, lead_id: int) -> None:

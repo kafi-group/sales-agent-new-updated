@@ -25,6 +25,8 @@ def _require_admin_after_reconnect(token: str | None) -> None:
         role = user.role.value if hasattr(user.role, "value") else str(user.role)
         if role != AppUserRole.admin.value:
             raise HTTPException(status_code=403, detail="Admin access required")
+        if getattr(user, "is_sandbox", False):
+            raise HTTPException(status_code=403, detail="This test account cannot reconnect the company database")
     finally:
         db.close()
 

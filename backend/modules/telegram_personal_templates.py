@@ -7,12 +7,16 @@ from sqlalchemy.orm import Session
 from db.models import TelegramPersonalTemplate
 
 
-def list_templates(db: Session) -> list[TelegramPersonalTemplate]:
-    return (
-        db.query(TelegramPersonalTemplate)
-        .order_by(TelegramPersonalTemplate.updated_at.desc())
-        .all()
+def list_templates(db: Session, user=None) -> list[TelegramPersonalTemplate]:
+    from modules.sandbox import scope_owner_rows
+
+    query = scope_owner_rows(
+        db.query(TelegramPersonalTemplate),
+        db,
+        user,
+        TelegramPersonalTemplate.created_by_user_id,
     )
+    return query.order_by(TelegramPersonalTemplate.updated_at.desc()).all()
 
 
 def get_template(db: Session, template_id: int) -> TelegramPersonalTemplate | None:

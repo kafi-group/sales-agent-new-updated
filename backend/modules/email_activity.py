@@ -43,12 +43,25 @@ def _scoped_query(
     is_admin: bool,
     channel: ActivityChannel | None = None,
 ):
-    """Admins see all events; other users only see their own."""
+    """Admins see company events; other users only see their own. Sandbox events stay private."""
+    from sqlalchemy import or_
+
+    from modules.sandbox import sandbox_user_ids
+
     query = db.query(EmailActivityEvent)
     if not is_admin:
         if user_id is None:
             return query.filter(EmailActivityEvent.id < 0)
         query = query.filter(EmailActivityEvent.user_id == user_id)
+    else:
+        hidden = sandbox_user_ids(db)
+        if hidden:
+            query = query.filter(
+                or_(
+                    EmailActivityEvent.user_id.is_(None),
+                    EmailActivityEvent.user_id.notin_(hidden),
+                )
+            )
     if channel == "whatsapp":
         query = query.filter(_is_whatsapp_event_clause())
     elif channel == "email":

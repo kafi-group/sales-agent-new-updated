@@ -88,14 +88,21 @@ def _is_admin(user: AppUser) -> bool:
     return role == AppUserRole.admin.value
 
 
+def _data_scope(user: AppUser) -> int | None:
+    """Company-wide for the real admin. Sandbox and sales users only see their rows."""
+    from modules.sandbox import owned_scope_user_id
+
+    return owned_scope_user_id(user)
+
+
 def _assignee_scope(user: AppUser) -> int | None:
     """Personal follow-up scope — non-admins only see their own assigned leads."""
-    return None if _is_admin(user) else user.id
+    return _data_scope(user)
 
 
 def _team_read_scope(user: AppUser) -> int | None:
     """Read scope for feeds (client history, etc.). Non-admins only see assigned leads."""
-    return None if _is_admin(user) else user.id
+    return _data_scope(user)
 
 
 def _table_assignment_filters(
@@ -110,8 +117,10 @@ def _table_assignment_filters(
     in_interested_clients: bool = False,
 ) -> tuple[int | None, bool, bool, int | None, bool]:
     """Resolve assignee scope for leads-table list/count queries."""
-    if not _is_admin(user):
-        # Non-admin sales user (e.g. Asim): strictly force their assigned user ID scope.
+    from modules.sandbox import is_sandbox_user
+
+    if not _is_admin(user) or is_sandbox_user(user):
+        # Sales users and the sandbox admin only see leads assigned to them.
         return (user.id, False, True, None, False)
 
     placed_section = bool(call_outcome) or in_interested_clients
@@ -147,6 +156,23 @@ def _require_buyer_access(db, user: AppUser, buyer_id: int) -> None:
         raise HTTPException(403, "You do not have access to this lead")
 
 
+def _require_visible_leads(db, user: AppUser, lead_ids: list[int]) -> None:
+    forbidden = [
+        lead_id
+        for lead_id in lead_ids
+        if not leads_module.user_can_access_buyer(db, user=user, buyer_id=lead_id)
+    ]
+    if forbidden:
+        raise HTTPException(403, "You do not have access to one or more of these leads")
+
+
+def _reject_sandbox_company_scan(user: AppUser) -> None:
+    from modules.sandbox import is_sandbox_user
+
+    if is_sandbox_user(user):
+        raise HTTPException(403, "This test account cannot change company-wide lead lists")
+
+
 router = APIRouter(prefix="/leads", tags=["leads"])
 
 
@@ -158,7 +184,7 @@ def list_leads(
     user: AppUser = Depends(get_current_user),
 ):
     """Discover Leads list — excludes old_clients (those live only in Old clients)."""
-    assigned_id = None if _is_admin(user) else user.id
+    assigned_id = _data_scope(user)
     return leads_module.list_buyers_with_scores(
         db,
         page=page,
@@ -176,7 +202,7 @@ def company_name_suggestions(
     _user: AppUser = Depends(get_current_user),
 ):
     """Autocomplete company names from the master buyers table (all sections)."""
-    assigned_id = None if _is_admin(_user) else _user.id
+    assigned_id = _data_scope(_user)
     rows = leads_module.suggest_company_names(db, q=q, limit=limit, assigned_to_user_id=assigned_id)
     return CompanyNameSuggestionsResponse(
         q=q.strip(),
@@ -191,9 +217,11 @@ def create_lead(
     user: AppUser = Depends(get_current_user),
 ):
     buyer = buyers_module.create_buyer(db, payload.model_dump())
-    # Sales users own what they create; admin creates stay in the shared pool
-    # until explicitly sent via "Leads Sent To".
-    if not _is_admin(user):
+    # Sales users and the sandbox admin own what they create. Company admin
+    # creates stay in the shared pool until explicitly sent via "Leads Sent To".
+    from modules.sandbox import is_real_admin
+
+    if not is_real_admin(user):
         leads_module.apply_buyer_assignee(db, buyer, user.id)
         db.commit()
         db.refresh(buyer)
@@ -764,7 +792,7 @@ def get_leads_table_section_counts(
     db: Session = Depends(get_db),
     user: AppUser = Depends(get_current_user),
 ):
-    assigned_id = None if _is_admin(user) else user.id
+    assigned_id = _data_scope(user)
     counts = leads_module.count_leads_table_sections(
         db,
         assigned_to_user_id=assigned_id,
@@ -791,6 +819,8 @@ def update_lead_table_row(
     data = payload.model_dump(exclude_unset=True)
     fill_missing_only = bool(data.pop("fill_missing_only", False))
     if "assigned_to_user_id" in data or "assigned_to" in data:
+        from modules.sandbox import is_real_admin, is_sandbox_user
+
         if not _is_admin(user):
             # Non-admin row edits may still include the current assignee field —
             # only block when they try to change who the lead is sent to.
@@ -806,6 +836,14 @@ def update_lead_table_row(
             data.pop("assigned_to", None)
         else:
             data.pop("assigned_to", None)
+            requested = data.get("assigned_to_user_id")
+            if is_sandbox_user(user):
+                if requested is not None and int(requested) != int(user.id):
+                    raise HTTPException(403, "This test account can only assign leads to itself")
+            elif is_real_admin(user) and requested is not None:
+                target = db.get(AppUser, int(requested))
+                if is_sandbox_user(target):
+                    raise HTTPException(400, "That account cannot receive company leads")
     try:
         row = leads_module.update_lead_table_row(
             db,
@@ -856,18 +894,8 @@ def bulk_delete_lead_table_rows(
     lead_ids = list(dict.fromkeys(payload.lead_ids or []))
     if not lead_ids:
         raise HTTPException(400, "Select at least one lead to delete")
-    # Sales users may only delete leads assigned to them; admin can delete any.
-    if not _is_admin(user):
-        forbidden = [
-            lead_id
-            for lead_id in lead_ids
-            if not leads_module.user_can_access_buyer(db, user=user, buyer_id=lead_id)
-        ]
-        if forbidden:
-            raise HTTPException(
-                403,
-                "You can only delete leads assigned to your account",
-            )
+    # Every caller can only delete leads they are allowed to see.
+    _require_visible_leads(db, user, lead_ids)
     result = leads_module.delete_lead_table_rows(db, lead_ids)
     return LeadTableBulkDeleteResponse(**result)
 
@@ -880,6 +908,16 @@ def bulk_assign_lead_table_rows(
 ):
     if not payload.lead_ids:
         raise HTTPException(400, "Select at least one lead to assign")
+    from modules.sandbox import is_real_admin, is_sandbox_user
+
+    _require_visible_leads(db, user, list(payload.lead_ids))
+    if is_sandbox_user(user):
+        if payload.assigned_to_user_id is not None and int(payload.assigned_to_user_id) != int(user.id):
+            raise HTTPException(403, "This test account can only assign leads to itself")
+    elif is_real_admin(user) and payload.assigned_to_user_id is not None:
+        target = db.get(AppUser, int(payload.assigned_to_user_id))
+        if is_sandbox_user(target):
+            raise HTTPException(400, "That account cannot receive company leads")
     try:
         result = leads_module.bulk_assign_lead_table_rows(
             db,
@@ -901,6 +939,7 @@ def set_target_pool_rows(
     """Admin: move leads into Hyperstore / Targeted Distributor / Targeted Client pools."""
     if not payload.lead_ids:
         raise HTTPException(400, "Select at least one lead")
+    _require_visible_leads(db, user, list(payload.lead_ids))
     try:
         result = leads_module.set_target_pool(
             db,
@@ -941,6 +980,7 @@ def move_leads_to_target_module(
     if not payload.lead_ids:
         raise HTTPException(400, "Select at least one lead")
     unique = list(dict.fromkeys(int(x) for x in payload.lead_ids if int(x) > 0))
+    _require_visible_leads(db, user, unique)
     if payload.expected_count is not None and payload.expected_count != len(unique):
         raise HTTPException(
             status_code=400,
@@ -1019,6 +1059,7 @@ def populate_target_pool_rows(
     user: AppUser = Depends(require_admin),
 ):
     """Admin: intelligently fill a targeted pool from Old clients or New search leads."""
+    _reject_sandbox_company_scan(user)
     try:
         result = leads_module.populate_target_pool_intelligent(
             db,
@@ -1041,6 +1082,7 @@ def remove_from_target_pool_rows(
     """Admin: move leads out of a targeted pool (does not delete the lead)."""
     if not payload.lead_ids:
         raise HTTPException(400, "Select at least one lead")
+    _require_visible_leads(db, user, list(payload.lead_ids))
     result = leads_module.remove_from_target_pool(db, lead_ids=payload.lead_ids)
     return LeadTableRemoveFromTargetPoolResponse(**result)
 
@@ -1054,6 +1096,7 @@ def remove_from_schedule_meeting_rows(
     """Remove leads from SCHEDULE MEETING (does not delete the lead)."""
     if not payload.lead_ids:
         raise HTTPException(400, "Select at least one lead")
+    _require_visible_leads(db, user, list(payload.lead_ids))
     result = leads_module.remove_from_schedule_meeting(db, lead_ids=payload.lead_ids)
     return LeadTableRemoveFromTargetPoolResponse(**result)
 
@@ -1070,6 +1113,7 @@ def promote_incomplete_archives_rows(
     """Manual promotion from Incomplete Data from Archives → Old clients."""
     if not payload.lead_ids:
         raise HTTPException(400, "Select at least one lead")
+    _require_visible_leads(db, user, list(payload.lead_ids))
     from modules.incomplete_archives import promote_from_incomplete_archives
 
     try:
@@ -1089,6 +1133,7 @@ def classify_target_pools_from_old_clients(
     user: AppUser = Depends(require_admin),
 ):
     """Admin: scan Old clients and move keyword matches into Hyperstore / Distributor pools."""
+    _reject_sandbox_company_scan(user)
     result = leads_module.classify_target_pools_from_old_clients(
         db,
         limit_per_pool=payload.limit_per_pool,
@@ -1167,12 +1212,13 @@ def dedupe_leads_table(
 @router.post("/table/remove-old-client-overlaps", response_model=RemoveOldClientOverlapsResponse)
 def remove_old_client_overlaps(
     db: Session = Depends(get_db),
-    _: AppUser = Depends(require_admin),
+    user: AppUser = Depends(require_admin),
 ):
     """Delete Discover / Leads-table rows that match an Old client by name or domain.
 
     Old clients are kept. Only overlapping new-discovery leads are removed.
     """
+    _reject_sandbox_company_scan(user)
     result = leads_module.remove_leads_overlapping_old_clients(db)
     return RemoveOldClientOverlapsResponse(**result)
 
@@ -1374,7 +1420,7 @@ async def discover_leads_from_csv(
         raise HTTPException(400, str(exc)) from exc
 
     # Sales preview: only mark already_exists against that user's own table.
-    assignee = None if _is_admin(user) else user.id
+    assignee = _data_scope(user)
     result = discover_from_csv(
         db,
         content,
@@ -1410,7 +1456,7 @@ def import_discovered_leads(
 
     # Admin imports land in the shared pool (unassigned). Sales-user imports
     # are auto-assigned to that user so they stay private to their account.
-    assignee = None if _is_admin(user) else user.id
+    assignee = _data_scope(user)
     result = import_candidates(
         db,
         [c.model_dump() for c in payload.candidates],
@@ -1461,7 +1507,7 @@ def import_discovered_leads_async(
     from modules import import_jobs
 
     # Admin imports stay unassigned; sales-user imports are assigned to them.
-    assignee = None if _is_admin(user) else user.id
+    assignee = _data_scope(user)
     try:
         job_id = import_jobs.start_import_job(
             [c.model_dump() for c in payload.candidates],
@@ -1497,10 +1543,16 @@ def get_import_rollback_status(
     user: AppUser = Depends(require_admin),
 ):
     """Admin only — whether Undo last import is available for this list (1 hour window)."""
-    _ = user
     from modules.import_rollback import get_rollback_status
+    from modules.sandbox import is_sandbox_user
 
-    return get_rollback_status(db, source, allow_expired=bool(force))
+    return get_rollback_status(
+        db,
+        source,
+        allow_expired=bool(force),
+        owner_user_id=user.id if is_sandbox_user(user) else None,
+        exclude_sandbox=not is_sandbox_user(user),
+    )
 
 
 class ImportRollbackRequest(BaseModel):
@@ -1517,6 +1569,7 @@ def post_import_rollback(
 ):
     """Admin only — undo the last spreadsheet import into this list (within 1 hour)."""
     from modules.import_rollback import rollback_last_import
+    from modules.sandbox import is_sandbox_user
 
     try:
         return rollback_last_import(
@@ -1524,6 +1577,8 @@ def post_import_rollback(
             source=payload.source,
             actor_user_id=user.id,
             allow_expired=bool(payload.force),
+            owner_user_id=user.id if is_sandbox_user(user) else None,
+            exclude_sandbox=not is_sandbox_user(user),
         )
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc

@@ -31,6 +31,11 @@ async def start_data_synthesis(
     """Upload spreadsheets, folders (multi-part), ZIP, or RAR — start synthesis job."""
     from modules import synthesis_jobs
 
+    from modules.sandbox import is_sandbox_user
+
+    if is_sandbox_user(user):
+        check_db = False
+
     if not files:
         raise HTTPException(400, "Select at least one Excel file, folder, ZIP, or RAR.")
 

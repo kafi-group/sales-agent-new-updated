@@ -46,6 +46,16 @@ def _interaction_read(db: Session, interaction) -> InteractionRead:
     return InteractionRead(**comms.interaction_to_dict(db, interaction))
 
 
+def _block_company_whatsapp(user: AppUser) -> None:
+    from modules.sandbox import is_sandbox_user
+
+    if is_sandbox_user(user):
+        raise HTTPException(
+            403,
+            "This test account cannot use the company WhatsApp Business account. Use WhatsApp Mobile instead.",
+        )
+
+
 @router.get("/config", response_model=WhatsAppConfigRead)
 def get_whatsapp_config():
     missing: list[str] = []
@@ -117,6 +127,7 @@ def whatsapp_test_send(
     db: Session = Depends(get_db),
     user: AppUser = Depends(require_admin),
 ):
+    _block_company_whatsapp(user)
     """Admin-only smoke test against Meta Cloud API.
 
     Free-form text only works inside the 24h customer-service window (recipient
@@ -204,7 +215,12 @@ def whatsapp_test_send(
 def list_whatsapp_templates(
     approved_only: bool = False,
     db: Session = Depends(get_db),
+    user: AppUser = Depends(get_current_user),
 ):
+    from modules.sandbox import is_sandbox_user
+
+    if is_sandbox_user(user):
+        return []
     from modules import whatsapp_templates as templates_module
 
     rows = templates_module.list_templates(db, approved_only=approved_only)
@@ -218,6 +234,7 @@ def create_whatsapp_template(
     user: AppUser = Depends(get_current_user),
 ):
     """Submit a new WhatsApp template to Meta for review."""
+    _block_company_whatsapp(user)
     from modules import whatsapp_templates as templates_module
 
     try:
@@ -255,6 +272,7 @@ def resubmit_whatsapp_template(
     user: AppUser = Depends(get_current_user),
 ):
     """Edit a rejected/paused/disabled template and resubmit to Meta for review."""
+    _block_company_whatsapp(user)
     from modules import whatsapp_templates as templates_module
 
     try:
@@ -290,6 +308,7 @@ def delete_whatsapp_template(
     user: AppUser = Depends(get_current_user),
 ):
     """Delete a WhatsApp template from Meta and the local list."""
+    _block_company_whatsapp(user)
     from modules import whatsapp_templates as templates_module
 
     try:
@@ -345,6 +364,7 @@ def sync_whatsapp_templates(
     db: Session = Depends(get_db),
     user: AppUser = Depends(get_current_user),
 ):
+    _block_company_whatsapp(user)
     from modules import whatsapp_templates as templates_module
 
     result = templates_module.sync_templates_from_meta(db)
@@ -365,6 +385,7 @@ def create_whatsapp_campaign_drafts(
     db: Session = Depends(get_db),
     user: AppUser = Depends(get_current_user),
 ):
+    _block_company_whatsapp(user)
     from modules import activity as activity_module
 
     try:
@@ -469,7 +490,10 @@ def list_whatsapp_conversations(
     number. Do not filter by lead assignee or viewer; Khalid, Asim, and all reps
     must see the identical conversation list and status.
     """
-    _ = user
+    from modules.sandbox import is_sandbox_user
+
+    if is_sandbox_user(user):
+        return WhatsAppConversationListResponse(total=0, page=1, page_size=20, total_pages=1, rows=[])
     try:
         page_val = int(page) if page is not None else 1
     except (ValueError, TypeError):
@@ -533,6 +557,7 @@ def reply_to_whatsapp_conversation(
     db: Session = Depends(get_db),
     user: AppUser = Depends(get_current_user),
 ):
+    _block_company_whatsapp(user)
     try:
         draft = comms.create_manual_whatsapp_draft(
             db, contact_id=contact_id, content=payload.content

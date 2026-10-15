@@ -155,22 +155,34 @@ def get_rollback_status(
     source: str,
     *,
     allow_expired: bool = False,
+    owner_user_id: int | None = None,
+    exclude_sandbox: bool = False,
 ) -> dict[str, Any]:
     src = (source or "").strip().lower()
     if not src:
         return {"available": False, "source": "", "reason": "source required"}
 
-    from db.models import LeadImportBatch
+    from sqlalchemy import or_
 
-    batch = (
-        db.query(LeadImportBatch)
-        .filter(
-            LeadImportBatch.source == src,
-            LeadImportBatch.rolled_back_at.is_(None),
-        )
-        .order_by(LeadImportBatch.created_at.desc(), LeadImportBatch.id.desc())
-        .first()
+    from db.models import LeadImportBatch
+    from modules.sandbox import sandbox_user_ids
+
+    query = db.query(LeadImportBatch).filter(
+        LeadImportBatch.source == src,
+        LeadImportBatch.rolled_back_at.is_(None),
     )
+    if owner_user_id is not None:
+        query = query.filter(LeadImportBatch.created_by_user_id == owner_user_id)
+    elif exclude_sandbox:
+        hidden = sandbox_user_ids(db)
+        if hidden:
+            query = query.filter(
+                or_(
+                    LeadImportBatch.created_by_user_id.is_(None),
+                    LeadImportBatch.created_by_user_id.notin_(hidden),
+                )
+            )
+    batch = query.order_by(LeadImportBatch.created_at.desc(), LeadImportBatch.id.desc()).first()
     if batch and batch.created_at:
         created = batch.created_at
         if created.tzinfo is None:
@@ -190,11 +202,14 @@ def get_rollback_status(
                 "remaining_seconds": 0,
             }
 
-    heuristic = _heuristic_last_import_buyer_ids(
-        db, src, enforce_window=not allow_expired
-    )
-    if heuristic:
-        return heuristic
+    # Sandbox undo only uses batches that user created. The heuristic scan
+    # looks at every buyer in the source and would touch company rows.
+    if owner_user_id is None:
+        heuristic = _heuristic_last_import_buyer_ids(
+            db, src, enforce_window=not allow_expired
+        )
+        if heuristic:
+            return heuristic
 
     return {
         "available": False,
@@ -210,6 +225,8 @@ def rollback_last_import(
     source: str,
     actor_user_id: int | None = None,
     allow_expired: bool = False,
+    owner_user_id: int | None = None,
+    exclude_sandbox: bool = False,
 ) -> dict[str, Any]:
     """Delete buyers from the last import batch for this source (admin only at API)."""
     from modules.audit import log_action
@@ -217,7 +234,13 @@ def rollback_last_import(
     from modules.leads import invalidate_lead_table_filters_cache, invalidate_section_counts_cache
     from db.models import LeadImportBatch
 
-    status = get_rollback_status(db, source, allow_expired=allow_expired)
+    status = get_rollback_status(
+        db,
+        source,
+        allow_expired=allow_expired,
+        owner_user_id=owner_user_id,
+        exclude_sandbox=exclude_sandbox,
+    )
     if not status.get("available"):
         raise ValueError(status.get("reason") or "Nothing to undo for this list.")
 

@@ -305,16 +305,22 @@ def working_days_elapsed(start: date, end: date, today: date, working: set[int])
 
 
 def _people(db: Session, viewer: AppUser, user_id: int | None) -> list[AppUser]:
-    role = viewer.role.value if isinstance(viewer.role, AppUserRole) else str(viewer.role)
-    if role != AppUserRole.admin.value:
+    from modules.sandbox import is_real_admin, is_sandbox_user
+
+    if not is_real_admin(viewer) or is_sandbox_user(viewer):
         return [viewer]
     if user_id is not None:
         person = db.get(AppUser, user_id)
-        if person is None:
+        if person is None or is_sandbox_user(person):
             raise ValueError("User not found")
         return [person]
     rows = db.query(AppUser).filter(AppUser.is_active.is_(True)).order_by(AppUser.full_name.asc()).all()
-    return [u for u in rows if (u.role.value if isinstance(u.role, AppUserRole) else str(u.role)) != AppUserRole.admin.value]
+    return [
+        u
+        for u in rows
+        if (u.role.value if isinstance(u.role, AppUserRole) else str(u.role)) != AppUserRole.admin.value
+        and not is_sandbox_user(u)
+    ]
 
 
 def compute_scorecard(

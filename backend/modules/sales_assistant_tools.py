@@ -45,8 +45,9 @@ NAV_DESTINATIONS: dict[str, dict[str, Any]] = {
 
 
 def _is_admin(viewer: AppUser) -> bool:
-    role = viewer.role.value if isinstance(viewer.role, AppUserRole) else str(viewer.role)
-    return role == AppUserRole.admin.value
+    from modules.sandbox import is_real_admin
+
+    return is_real_admin(viewer)
 
 
 def resolve_user(db: Session, name: str | None, viewer: AppUser) -> AppUser | None:
@@ -88,10 +89,13 @@ def tool_list_team(db: Session, viewer: AppUser) -> dict[str, Any]:
         .order_by(AppUser.full_name.asc())
         .all()
     )
+    from modules.sandbox import is_sandbox_user
+
     return {
         "users": [
             {"id": u.id, "username": u.username, "full_name": u.full_name}
             for u in rows
+            if not is_sandbox_user(u)
         ]
     }
 

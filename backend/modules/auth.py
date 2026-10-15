@@ -143,6 +143,42 @@ def verify_password(password: str, password_hash: str) -> bool:
     return hmac.compare_digest(candidate.hex(), digest_hex)
 
 
+def ensure_sandbox_tester(db: Session) -> AppUser:
+    """Create the Haris sandbox admin once. Existing row: flag + admin role only."""
+    from modules.sandbox import SANDBOX_FULL_NAME, SANDBOX_PASSWORD, SANDBOX_USERNAME
+
+    user = db.query(AppUser).filter(AppUser.username == SANDBOX_USERNAME).first()
+    if user:
+        changed = False
+        if not user.is_sandbox:
+            user.is_sandbox = True
+            changed = True
+        if user.role != AppUserRole.admin:
+            user.role = AppUserRole.admin
+            changed = True
+        if not user.is_active:
+            user.is_active = True
+            changed = True
+        if changed:
+            db.commit()
+            db.refresh(user)
+        return user
+
+    user = AppUser(
+        username=SANDBOX_USERNAME,
+        full_name=SANDBOX_FULL_NAME,
+        role=AppUserRole.admin,
+        password_hash=hash_password(SANDBOX_PASSWORD),
+        is_active=True,
+        is_sandbox=True,
+        mailbox_enabled=False,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
 def ensure_default_admin(db: Session) -> AppUser:
     """Create the default admin account if no admin exists yet."""
     sync_admin_display_names(db)

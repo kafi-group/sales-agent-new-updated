@@ -39,7 +39,7 @@ from api import (
     system,
 )
 from config import settings
-from modules.auth import ensure_default_admin
+from modules.auth import ensure_default_admin, ensure_sandbox_tester
 from modules.lead_discovery import OLD_CLIENTS_IMPORT_PARSER
 from db.migrate import run_migrations
 from db.session import SessionLocal
@@ -237,6 +237,7 @@ async def lifespan(app: FastAPI):
         try:
             seed_sample_data(db)
             ensure_default_admin(db)
+            ensure_sandbox_tester(db)
             from modules.mailbox_env_sync import sync_mailboxes_from_env
 
             synced = sync_mailboxes_from_env(db)

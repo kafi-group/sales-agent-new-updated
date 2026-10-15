@@ -11,7 +11,7 @@ from api.schemas import (
     EmailActivityListResponse,
     EmailActivityMarkReadRequest,
 )
-from db.models import AppUser, AppUserRole
+from db.models import AppUser
 from modules import email_activity
 
 router = APIRouter(prefix="/email-activity", tags=["email-activity"])
@@ -20,8 +20,9 @@ ChannelParam = Literal["email", "whatsapp"]
 
 
 def _is_admin(user: AppUser) -> bool:
-    role = user.role.value if isinstance(user.role, AppUserRole) else str(user.role)
-    return role == AppUserRole.admin.value
+    from modules.sandbox import is_real_admin
+
+    return is_real_admin(user)
 
 
 def _parse_channel(channel: Optional[str]) -> Optional[email_activity.ActivityChannel]:

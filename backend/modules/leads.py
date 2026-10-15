@@ -117,6 +117,8 @@ def suggest_company_names(
     )
     if assigned_to_user_id is not None:
         q_builder = q_builder.filter(Buyer.assigned_to_user_id == assigned_to_user_id)
+    else:
+        q_builder = _hide_sandbox_buyers(q_builder)
     rows = (
         q_builder.order_by(
             # Prefer names that start with the typed text, then alphabetical.
@@ -144,7 +146,9 @@ def resolve_assignee_user(db: Session, user_id: int | None) -> AppUser | None:
     if not user or not user.is_active:
         raise ValueError("Assignee not found or inactive")
     role = user.role.value if isinstance(user.role, AppUserRole) else str(user.role)
-    if role != AppUserRole.user.value:
+    from modules.sandbox import is_sandbox_user
+
+    if role != AppUserRole.user.value and not is_sandbox_user(user):
         raise ValueError("Leads can only be assigned to sales users")
     return user
 
@@ -174,14 +178,12 @@ def apply_buyer_assignee(
 
 
 def user_can_access_buyer(db: Session, *, user: AppUser, buyer_id: int) -> bool:
-    role = user.role.value if isinstance(user.role, AppUserRole) else str(user.role)
-    if role == AppUserRole.admin.value:
-        return True
+    from modules.sandbox import buyer_visible_to
+
     buyer = buyers_module.get_buyer(db, buyer_id)
     if not buyer:
         return False
-    # All active sales users can view and work leads across the shared team tables.
-    return True
+    return buyer_visible_to(db, user, buyer)
 
 
 def clear_assignments_for_user(db: Session, user_id: int) -> None:
@@ -249,6 +251,16 @@ def unassign_spreadsheet_imports(db: Session) -> dict[str, int]:
     return {"unassigned_count": int(updated)}
 
 
+def _hide_sandbox_buyers(buyer_query):
+    """Company-wide buyer queries skip leads assigned to a sandbox test account."""
+    from modules.sandbox import exclude_sandbox_assignees
+
+    session = buyer_query.session
+    if session is None:
+        return buyer_query
+    return exclude_sandbox_assignees(buyer_query, session, Buyer.assigned_to_user_id)
+
+
 def research_buyer(db: Session, buyer_id: int, *, force_refresh: bool = False) -> BuyerProfile:
     return _research.research_buyer(db, buyer_id, force_refresh=force_refresh)
 
@@ -272,6 +284,8 @@ def list_buyers_with_scores(
     buyer_query = db.query(Buyer)
     if assigned_to_user_id is not None:
         buyer_query = buyer_query.filter(Buyer.assigned_to_user_id == assigned_to_user_id)
+    else:
+        buyer_query = _hide_sandbox_buyers(buyer_query)
     excluded = {
         part.strip().lower()
         for part in (exclude_source or "").split(",")
@@ -630,7 +644,7 @@ def _apply_lead_table_scope(
     if all_assigned_contacts:
         if assigned_to_user_id is not None:
             return buyer_query.filter(Buyer.assigned_to_user_id == assigned_to_user_id)
-        return buyer_query
+        return _hide_sandbox_buyers(buyer_query)
 
     if master_type:
         if master_type.strip().lower() == "fmcg":
@@ -661,6 +675,8 @@ def _apply_lead_table_scope(
         )
     elif unassigned_only:
         buyer_query = buyer_query.filter(Buyer.assigned_to_user_id.is_(None))
+    else:
+        buyer_query = _hide_sandbox_buyers(buyer_query)
 
     if source:
         buyer_query = buyer_query.filter(
@@ -2097,6 +2113,8 @@ def _compute_section_counts(
         )
     elif assigned_to_user_id is not None:
         buyer_query = buyer_query.filter(Buyer.assigned_to_user_id == assigned_to_user_id)
+    else:
+        buyer_query = _hide_sandbox_buyers(buyer_query)
 
     incomplete_archives_ids: set[int] = set()
     old_client_ids: set[int] = set()

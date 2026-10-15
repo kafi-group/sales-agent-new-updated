@@ -19,7 +19,7 @@ def run_due_processes() -> dict[str, Any]:
     try:
         operator = (
             db.query(AppUser)
-            .filter(AppUser.is_active.is_(True), AppUser.role == AppUserRole.admin)
+            .filter(AppUser.is_active.is_(True), AppUser.role == AppUserRole.admin, AppUser.is_sandbox.is_(False))
             .order_by(AppUser.id.asc())
             .first()
         )

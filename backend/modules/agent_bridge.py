@@ -40,7 +40,11 @@ _PIPELINE_BUCKETS: dict[str, tuple[str, ...]] = {
 def _admin_viewer(db: Session) -> AppUser:
     admin = (
         db.query(AppUser)
-        .filter(AppUser.role == AppUserRole.admin, AppUser.is_active.is_(True))
+        .filter(
+            AppUser.role == AppUserRole.admin,
+            AppUser.is_active.is_(True),
+            AppUser.is_sandbox.is_(False),
+        )
         .order_by(AppUser.id.asc())
         .first()
     )

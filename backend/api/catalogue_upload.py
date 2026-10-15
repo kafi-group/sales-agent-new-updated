@@ -84,7 +84,13 @@ def upload_catalogue_pdf(
                 "That PDF looks incomplete or damaged (the upload may have been cut off). "
                 "Please try again.",
             )
-        install_custom_catalogue(cat_id, tmp)
+        from modules.catalogue_overrides import install_sandbox_catalogue
+        from modules.sandbox import is_sandbox_user
+
+        if is_sandbox_user(user):
+            install_sandbox_catalogue(user.id, cat_id, tmp)
+        else:
+            install_custom_catalogue(cat_id, tmp)
     except HTTPException:
         raise
     except Exception as exc:  # noqa: BLE001
@@ -104,6 +110,12 @@ def upload_catalogue_pdf(
         getattr(user, "username", "admin"),
         total / (1024 * 1024),
     )
+    from modules.sandbox import is_sandbox_user
+
+    if is_sandbox_user(user):
+        from modules.catalogue_overrides import list_sandbox_catalogue_slots
+
+        return next((c for c in list_sandbox_catalogue_slots(user.id) if c["id"] == cat_id), {})
     return _catalogue_item(cat_id)
 
 
@@ -111,7 +123,14 @@ def upload_catalogue_pdf(
 def restore_original_catalogue(cat_id: str, user: AppUser = Depends(require_admin)):
     """Remove the uploaded replacement and go back to the original PDF."""
     try:
-        removed = remove_custom_catalogue(cat_id)
+        from modules.sandbox import is_sandbox_user
+
+        if is_sandbox_user(user):
+            from modules.catalogue_overrides import remove_sandbox_catalogue
+
+            removed = remove_sandbox_catalogue(user.id, cat_id)
+        else:
+            removed = remove_custom_catalogue(cat_id)
     except ValueError as exc:
         raise HTTPException(404, str(exc)) from exc
     except Exception as exc:  # noqa: BLE001
@@ -122,4 +141,10 @@ def restore_original_catalogue(cat_id: str, user: AppUser = Depends(require_admi
             cat_id,
             getattr(user, "username", "admin"),
         )
+    from modules.sandbox import is_sandbox_user
+
+    if is_sandbox_user(user):
+        from modules.catalogue_overrides import list_sandbox_catalogue_slots
+
+        return next((c for c in list_sandbox_catalogue_slots(user.id) if c["id"] == cat_id), {})
     return _catalogue_item(cat_id)

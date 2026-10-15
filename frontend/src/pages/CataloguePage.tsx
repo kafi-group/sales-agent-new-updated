@@ -79,6 +79,7 @@ export function CataloguePage({
 
   // WhatsApp / Telegram send modal state
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
+  const [shareCatalogueIds, setShareCatalogueIds] = useState<string[]>([]);
   const [shareChannel, setShareChannel] = useState<"whatsapp" | "telegram">("whatsapp");
   const [whatsAppRecipient, setWhatsAppRecipient] = useState("");
   const [whatsAppMessage, setWhatsAppMessage] = useState("");
@@ -231,6 +232,7 @@ export function CataloguePage({
       .join("\n");
 
     setShareChannel("whatsapp");
+    setShareCatalogueIds(idsToAttach);
     setWhatsAppRecipient("");
     setWhatsAppMessage(
       `Hello! 👋 Greetings from *Kafi Commodities (Pvt.) Ltd. (Brand: ESSENCE)*.\n\n` +
@@ -280,11 +282,29 @@ export function CataloguePage({
         await client.sendTelegramPersonal(phone, whatsAppMessage.trim());
         setNotice("Catalogue sent via Telegram Mobile.");
       } else {
-        await client.sendWhatsAppPersonal({
+        if (!shareCatalogueIds.length) {
+          onError("Choose a catalogue before sending.");
+          return;
+        }
+        const result = await client.shareCataloguesOnWhatsApp({
           to_phone: phone,
+          catalogue_ids: shareCatalogueIds,
           message: whatsAppMessage.trim(),
         });
-        setNotice("Catalogue sent from your scanned personal WhatsApp.");
+        const attached = result.attached_count ?? 0;
+        const linkOnly = (result.files || []).filter((file) => file.mode !== "document");
+        if (attached > 0 && linkOnly.length === 0) {
+          setNotice(`Sent to ${phone}. The catalogue PDF and message were delivered on WhatsApp.`);
+        } else if (attached > 0) {
+          setNotice(
+            `Sent to ${phone}. ${attached} PDF${attached === 1 ? "" : "s"} attached. ` +
+              "Larger catalogues were sent as a download link in the same chat.",
+          );
+        } else {
+          setNotice(
+            `Sent to ${phone}. The PDF is too large to attach, so WhatsApp delivered the download link.`,
+          );
+        }
       }
       setShowWhatsAppModal(false);
     } catch (err) {
@@ -614,7 +634,7 @@ export function CataloguePage({
               <p className="text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-3 py-2">
                 {shareChannel === "telegram"
                   ? "Sends from your connected Telegram Mobile account."
-                  : "Sends from your scanned WhatsApp Mobile session — not WhatsApp Web."}
+                  : "Sends from your linked WhatsApp Mobile. The recipient gets the message and the PDF on their phone. Connect WhatsApp Mobile first if you have not scanned the QR."}
               </p>
               <label className="block space-y-1">
                 <span className="text-slate-400">Recipient Phone Number (e.g. +971501234567 or +923330313518)</span>
@@ -658,7 +678,7 @@ export function CataloguePage({
                     ? "Sending…"
                     : shareChannel === "telegram"
                       ? "Send via Telegram"
-                      : "Send from personal"}
+                      : "Send on WhatsApp"}
                 </span>
               </button>
             </div>

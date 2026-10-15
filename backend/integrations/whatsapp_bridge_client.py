@@ -78,10 +78,12 @@ def _headers() -> dict[str, str]:
 
 # Keep QR/bridge calls short so a disconnect cannot starve email, Cloud inbox, or leads.
 _STATUS_TIMEOUT = 4.0
-_QR_TIMEOUT = 8.0
-_PAIR_TIMEOUT = 12.0
+# Bridge waits up to ~20s for a finished PNG. These must outlast that wait.
+_QR_TIMEOUT = 24.0
+_PAIR_TIMEOUT = 28.0
 _DISCONNECT_TIMEOUT = 5.0
-_SEND_TIMEOUT = 15.0
+_SEND_TIMEOUT = 30.0
+_SEND_DOCUMENT_TIMEOUT = 55.0
 
 
 def _base_url(user_id: int | None = None, username: str | None = None) -> str:
@@ -159,6 +161,29 @@ def _normalize_status(data: dict[str, Any]) -> dict[str, Any]:
         data["phone"] = None
         data["connectedPhone"] = None
 
+    return data
+
+
+def _qr_image_url(data: dict[str, Any]) -> str | None:
+    """Return a real image data URL. Ignore the raw Baileys pairing string."""
+    for key in ("qrDataUrl", "dataUrl", "qr"):
+        val = data.get(key)
+        if not isinstance(val, str):
+            continue
+        text = val.strip()
+        if text.startswith("data:image/"):
+            return text
+        if text.startswith("iVBOR"):
+            return f"data:image/png;base64,{text}"
+        if text.startswith("/9j"):
+            return f"data:image/jpeg;base64,{text}"
+    return None
+
+
+def publish_qr_fields(data: dict[str, Any]) -> dict[str, Any]:
+    """Strip the pairing text so the UI cannot draw it as a half-rendered PNG."""
+    data["qrDataUrl"] = _qr_image_url(data)
+    data["qr"] = None
     return data
 
 
@@ -268,8 +293,8 @@ def bridge_qr(user_id: int, username: str | None = None) -> dict[str, Any]:
             if isinstance(qr_val, str) and qr_val and not str(qr_val).startswith("data:"):
                 if qr_val.startswith("iVBOR") or qr_val.startswith("/9j"):
                     data["qrDataUrl"] = f"data:image/png;base64,{qr_val}"
-            return _normalize_status(data)
-        return {"session": session, "connected": False, "qr": None}
+            return publish_qr_fields(_normalize_status(data))
+        return {"session": session, "connected": False, "qr": None, "qrDataUrl": None}
 
 
 def bridge_pair(
@@ -304,7 +329,7 @@ def bridge_pair(
         if isinstance(qr_val, str) and qr_val and not str(qr_val).startswith("data:"):
             if qr_val.startswith("iVBOR") or qr_val.startswith("/9j"):
                 data["qrDataUrl"] = f"data:image/png;base64,{qr_val}"
-        return _normalize_status(data)
+        return publish_qr_fields(_normalize_status(data))
 
 
 def bridge_disconnect(user_id: int, username: str | None = None) -> dict[str, Any]:
@@ -332,16 +357,38 @@ def bridge_disconnect(user_id: int, username: str | None = None) -> dict[str, An
     return disconnected
 
 
-def bridge_send(user_id: int, *, to_phone: str, message: str, username: str | None = None) -> dict[str, Any]:
+def _bridge_error_text(resp: httpx.Response) -> str:
+    detail = ""
+    try:
+        body = resp.json()
+        if isinstance(body, dict):
+            detail = str(body.get("error") or body.get("detail") or "").strip()
+    except Exception:  # noqa: BLE001
+        detail = ""
+    if not detail:
+        detail = (resp.text or "").strip()[:400]
+    return detail or f"WhatsApp send failed ({resp.status_code})"
+
+
+def bridge_send(
+    user_id: int,
+    *,
+    to_phone: str,
+    message: str,
+    username: str | None = None,
+    document_url: str | None = None,
+    filename: str | None = None,
+) -> dict[str, Any]:
     session = bridge_session_id(user_id, username=username)
     base_url = _base_url(user_id=user_id, username=username)
     phone = (to_phone or "").strip()
     text = (message or "").strip()
+    doc_url = (document_url or "").strip()
     if not phone:
         raise ValueError("Recipient phone is required")
-    if not text:
+    if not text and not doc_url:
         raise ValueError("Message body is required")
-    payload = {
+    payload: dict[str, Any] = {
         "session": session,
         "sessionId": session,
         "to": phone,
@@ -349,13 +396,20 @@ def bridge_send(user_id: int, *, to_phone: str, message: str, username: str | No
         "message": text,
         "text": text,
     }
-    with httpx.Client(timeout=_SEND_TIMEOUT) as client:
+    if doc_url:
+        payload["document_url"] = doc_url
+        payload["filename"] = (filename or "catalogue.pdf").strip() or "catalogue.pdf"
+        payload["mimetype"] = "application/pdf"
+    timeout = _SEND_DOCUMENT_TIMEOUT if doc_url else _SEND_TIMEOUT
+    with httpx.Client(timeout=timeout) as client:
         resp = client.post(
             f"{base_url}/send",
             json=payload,
             headers=_headers(),
         )
         if resp.status_code >= 400:
-            detail = resp.text[:300]
-            raise RuntimeError(detail or f"Bridge send failed ({resp.status_code})")
-        return resp.json() if resp.content else {"status": "sent"}
+            raise RuntimeError(_bridge_error_text(resp))
+        data = resp.json() if resp.content else {"status": "sent"}
+        if isinstance(data, dict) and data.get("delivered") is False:
+            raise RuntimeError(str(data.get("error") or "WhatsApp did not confirm delivery."))
+        return data if isinstance(data, dict) else {"status": "sent"}

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import threading
 import time
 from typing import Any
@@ -120,6 +121,16 @@ def delete_personal_whatsapp_template(
 class WhatsAppPersonalSendRequest(BaseModel):
     to_phone: str = Field(min_length=6, max_length=32)
     message: str = Field(min_length=1, max_length=4096)
+
+
+class WhatsAppCatalogueShareRequest(BaseModel):
+    to_phone: str = Field(min_length=6, max_length=32)
+    catalogue_ids: list[str] = Field(min_length=1, max_length=8)
+    message: str = Field(min_length=1, max_length=4096)
+
+
+# WhatsApp document uploads through the bridge stay reliable under this size.
+_WHATSAPP_DOC_MAX_BYTES = 16 * 1024 * 1024
 
 
 class WhatsAppPersonalBulkSendRequest(BaseModel):
@@ -319,17 +330,24 @@ def whatsapp_personal_pair(
         q = (request.query_params.get("force") or request.query_params.get("forceNew") or "").strip()
         if q in {"1", "true", "yes"}:
             force_new = True
+        def _pair_ready(result: dict) -> bool:
+            if result.get("connected"):
+                return True
+            url = result.get("qrDataUrl")
+            return isinstance(url, str) and url.startswith("data:image/")
+
         last_result: dict = {}
-        deadline = time.monotonic() + 12.0
+        # Bridge draws the PNG before it answers. Leave room for one follow-up poll.
+        deadline = time.monotonic() + 32.0
         last_result = bridge.bridge_pair(
             user.id, username=user.username, force_new=force_new
         )
-        if last_result.get("qr") or last_result.get("qrDataUrl") or last_result.get("connected"):
+        if _pair_ready(last_result):
             return last_result
         while time.monotonic() < deadline:
-            time.sleep(0.8)
+            time.sleep(1.0)
             last_result = bridge.bridge_qr(user.id, username=user.username)
-            if last_result.get("qr") or last_result.get("qrDataUrl") or last_result.get("connected"):
+            if _pair_ready(last_result):
                 return last_result
         return last_result
     except RuntimeError as exc:
@@ -502,6 +520,152 @@ def whatsapp_personal_send(
         raise HTTPException(503, str(exc)) from exc
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(502, f"Personal WhatsApp send failed: {exc}") from exc
+
+
+def _catalogue_download_url(cat_id: str) -> str:
+    from modules.email_tracking import public_api_base
+
+    base = (public_api_base() or "https://sales-agent-new-updated-production.up.railway.app").rstrip("/")
+    return f"{base}/api/catalogues/{cat_id}/download"
+
+
+def _message_with_catalogue_links(message: str, catalogues: list[tuple[str, str, str]]) -> str:
+    """Point every catalogue link at the public API, and append any the draft dropped."""
+    text = message
+    missing: list[str] = []
+    for cat_id, title, url in catalogues:
+        pattern = re.compile(rf"https?://\S*/api/catalogues/{re.escape(cat_id)}/download", re.I)
+        if pattern.search(text):
+            text = pattern.sub(url, text)
+        elif url not in text:
+            missing.append(f"• {title}: {url}")
+    if missing:
+        text = text.rstrip() + "\n\nDownload PDF:\n" + "\n".join(missing)
+    return text
+
+
+@router.post("/share-catalogues")
+def share_catalogues_on_whatsapp(
+    body: WhatsAppCatalogueShareRequest,
+    db: Session = Depends(get_db),
+    user: AppUser = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Send catalogue text plus the PDF itself from the user's linked WhatsApp."""
+    from modules.catalogues import get_catalogue_by_id
+
+    status = bridge.bridge_status(user.id, username=user.username)
+    if not status.get("connected"):
+        raise HTTPException(
+            409,
+            "Personal WhatsApp is not connected. Open WhatsApp Mobile and scan the QR code first.",
+        )
+
+    prepared: list[tuple[str, str, str, int]] = []
+    for cat_id in body.catalogue_ids:
+        clean_id = (cat_id or "").strip()
+        if not clean_id:
+            continue
+        try:
+            path, meta = get_catalogue_by_id(clean_id)
+            size = path.stat().st_size if path.is_file() else 0
+            title = str(meta.get("title") or clean_id)
+            filename = str(meta.get("filename") or f"{clean_id}.pdf")
+        except (ValueError, FileNotFoundError) as exc:
+            raise HTTPException(404, str(exc)) from exc
+        prepared.append((clean_id, title, filename, size))
+
+    if not prepared:
+        raise HTTPException(400, "Choose at least one catalogue to send.")
+
+    link_rows = [(cat_id, title, _catalogue_download_url(cat_id)) for cat_id, title, _filename, _size in prepared]
+    message = _message_with_catalogue_links(body.message.strip(), link_rows)
+
+    try:
+        text_result = bridge.bridge_send(
+            user.id,
+            to_phone=body.to_phone,
+            message=message,
+            username=user.username,
+        )
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(502, str(exc)) from exc
+
+    files: list[dict[str, Any]] = []
+    for cat_id, title, filename, size in prepared:
+        url = _catalogue_download_url(cat_id)
+        if size <= 0 or size > _WHATSAPP_DOC_MAX_BYTES:
+            files.append(
+                {
+                    "id": cat_id,
+                    "title": title,
+                    "mode": "link",
+                    "url": url,
+                    "reason": "This PDF is too large to attach, so the download link is in the message.",
+                }
+            )
+            continue
+        try:
+            doc_result = bridge.bridge_send(
+                user.id,
+                to_phone=body.to_phone,
+                message=title,
+                username=user.username,
+                document_url=url,
+                filename=filename,
+            )
+            files.append(
+                {
+                    "id": cat_id,
+                    "title": title,
+                    "mode": "document",
+                    "url": url,
+                    "message_id": doc_result.get("messageId") if isinstance(doc_result, dict) else None,
+                }
+            )
+        except Exception as exc:  # noqa: BLE001
+            # The text message already reached WhatsApp. A PDF failure must not hide that.
+            files.append(
+                {
+                    "id": cat_id,
+                    "title": title,
+                    "mode": "link",
+                    "url": url,
+                    "reason": str(exc),
+                }
+            )
+
+    try:
+        contact = comms._ensure_whatsapp_contact(db, wa_id=body.to_phone)
+        outbound = Interaction(
+            contact_id=contact.id,
+            channel=Channel.whatsapp,
+            direction=Direction.outbound,
+            content=message,
+            status=InteractionStatus.sent,
+            handled_by=HandledBy.human,
+            provider_message_id=(
+                f"baileys_{text_result.get('messageId')}"
+                if isinstance(text_result, dict) and text_result.get("messageId")
+                else "baileys_catalogue"
+            ),
+            personal_whatsapp_user_id=user.id,
+        )
+        db.add(outbound)
+        db.commit()
+    except Exception:  # noqa: BLE001
+        pass
+
+    attached = sum(1 for row in files if row.get("mode") == "document")
+    return {
+        "ok": True,
+        "delivered": True,
+        "to": body.to_phone,
+        "message_id": text_result.get("messageId") if isinstance(text_result, dict) else None,
+        "attached_count": attached,
+        "files": files,
+    }
 
 
 @router.post("/rephrase")

@@ -11,9 +11,11 @@ function qrImageFromPayload(qr: Record<string, unknown> | null): string | null {
   if (!qr) return null;
   const candidates = [qr.qrDataUrl, qr.dataUrl, qr.qr];
   for (const value of candidates) {
-    if (typeof value !== "string" || !value.trim()) continue;
-    if (value.startsWith("data:")) return value;
-    return `data:image/png;base64,${value}`;
+    if (typeof value !== "string") continue;
+    const text = value.trim();
+    if (text.startsWith("data:image/") && text.length > 80) return text;
+    if (text.startsWith("iVBOR")) return `data:image/png;base64,${text}`;
+    if (text.startsWith("/9j")) return `data:image/jpeg;base64,${text}`;
   }
   return null;
 }
@@ -186,11 +188,13 @@ export function WhatsAppQrPage({ onError }: WhatsAppQrPageProps) {
                 : "Not connected yet. Generate a QR code, then scan it from your phone."}
             </p>
             {qrImage ? (
-              <img
-                src={qrImage}
-                alt="WhatsApp QR code"
-                className="mx-auto w-64 h-64 rounded-lg bg-white p-3"
-              />
+              <div className="mx-auto w-full max-w-xs rounded-lg bg-white p-3">
+                <img
+                  src={qrImage}
+                  alt="WhatsApp QR code"
+                  className="block w-full h-auto"
+                />
+              </div>
             ) : (
               <ActionButton
                 icon={IconWhatsApp}

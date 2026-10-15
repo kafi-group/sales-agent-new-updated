@@ -13,9 +13,12 @@ function qrImageFromPayload(qr: Record<string, unknown> | null): string | null {
   if (!qr) return null;
   const candidates = [qr.qrDataUrl, qr.dataUrl, qr.qr];
   for (const value of candidates) {
-    if (typeof value !== "string" || !value.trim()) continue;
-    if (value.startsWith("data:")) return value;
-    return `data:image/png;base64,${value}`;
+    if (typeof value !== "string") continue;
+    const text = value.trim();
+    // Only a finished image. The raw Baileys pairing string is not a PNG.
+    if (text.startsWith("data:image/") && text.length > 80) return text;
+    if (text.startsWith("iVBOR")) return `data:image/png;base64,${text}`;
+    if (text.startsWith("/9j")) return `data:image/jpeg;base64,${text}`;
   }
   return null;
 }
@@ -187,19 +190,16 @@ export function WhatsAppMobilePage({ onError }: WhatsAppMobilePageProps) {
         return;
       }
 
-      if (opts?.skipQr || isConnectingStatus(st) || qrImageFromPayload(qrRef.current)) {
-        return;
-      }
+      const haveImage = Boolean(qrImageFromPayload(qrRef.current));
+      if (opts?.skipQr) return;
+      // After a scan the socket is "connecting" — don't start a second QR.
+      if (isConnectingStatus(st) && haveImage) return;
 
       let qrData: Record<string, unknown> | null = null;
-      for (let attempt = 0; attempt < 3; attempt++) {
-        try {
-          qrData = await client.getWhatsAppPersonalQr();
-          if (qrData?.qr || qrData?.qrDataUrl || isConnectedStatus(qrData)) break;
-        } catch {
-          // ignore, retry
-        }
-        if (attempt < 2) await new Promise((r) => setTimeout(r, 1000));
+      try {
+        qrData = await client.getWhatsAppPersonalQr();
+      } catch {
+        return;
       }
       if (isConnectedStatus(qrData)) {
         setStatus(qrData);
@@ -207,7 +207,7 @@ export function WhatsAppMobilePage({ onError }: WhatsAppMobilePageProps) {
         qrRef.current = null;
         return;
       }
-      if (qrData?.qr || qrData?.qrDataUrl) {
+      if (qrImageFromPayload(qrData)) {
         setQr(qrData);
         qrRef.current = qrData;
       }
@@ -293,21 +293,34 @@ export function WhatsAppMobilePage({ onError }: WhatsAppMobilePageProps) {
     setQr(null);
     qrRef.current = null;
     try {
-      const qrData = await client.pairWhatsAppPersonal({ forceNew });
+      let qrData = await client.pairWhatsAppPersonal({ forceNew });
+      for (let attempt = 0; attempt < 6; attempt += 1) {
+        if (isConnectedStatus(qrData) || qrImageFromPayload(qrData)) break;
+        await new Promise((r) => setTimeout(r, 1500));
+        try {
+          const next = await client.getWhatsAppPersonalQr();
+          if (next) qrData = next;
+        } catch {
+          // Bridge is still drawing the PNG.
+        }
+      }
       if (isConnectedStatus(qrData)) {
         setStatus(qrData);
         setQr(null);
         qrRef.current = null;
         setNotice(`${userName}'s WhatsApp is already connected.`);
-      } else {
+      } else if (qrImageFromPayload(qrData)) {
         setQr(qrData);
         qrRef.current = qrData;
         setStatus({ ...(qrData ?? {}), connected: false, status: "qr-pending" });
         setNotice(
           forceNew
             ? `Scan this fresh QR code with WhatsApp on ${userName}'s mobile phone. Keep this page open until it says Connected.`
-            : `Connecting ${userName}'s WhatsApp… If a QR appears, scan it. Existing sessions restore without kicking other users.`
+            : `Scan this QR with WhatsApp on ${userName}'s phone. Keep this page open until it says Connected.`
         );
+      } else {
+        setStatus({ connected: false, status: "qr-pending" });
+        setNotice("QR is still generating. Keep this page open — it will appear as soon as the full code is ready.");
       }
     } catch (e) {
       onError(e instanceof Error ? e.message : "Could not generate QR code");
@@ -575,7 +588,27 @@ export function WhatsAppMobilePage({ onError }: WhatsAppMobilePageProps) {
 
           {!connected ? (
             <div className="space-y-6 text-center py-4">
-              {connecting ? (
+              {qrImage ? (
+                <div className="space-y-4">
+                  <div className="relative inline-block w-full max-w-[28rem]">
+                    <div className="rounded-3xl bg-white p-4 shadow-2xl border-4 border-emerald-500/50">
+                      <img
+                        src={qrImage}
+                        alt="WhatsApp Mobile QR code"
+                        className="block w-full h-auto"
+                        onError={() => {
+                          qrRef.current = null;
+                          setQr(null);
+                        }}
+                      />
+                    </div>
+                    <div className="mt-4 inline-flex items-center gap-2 text-sm text-emerald-400 bg-emerald-500/10 px-4 py-1.5 rounded-full border border-emerald-500/30 font-semibold">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+                      Auto-checking connection…
+                    </div>
+                  </div>
+                </div>
+              ) : connecting ? (
                 <div className="py-10 space-y-3">
                   <div className="text-lg font-bold text-emerald-300">Phone scanned — finishing login…</div>
                   <p className="text-sm text-slate-300 max-w-md mx-auto leading-relaxed">
@@ -586,24 +619,12 @@ export function WhatsAppMobilePage({ onError }: WhatsAppMobilePageProps) {
                     Completing connection…
                   </div>
                 </div>
-              ) : loading && !qrImage ? (
-                <div className="py-12 text-slate-400 text-base font-medium animate-pulse">
-                  Initializing WhatsApp Mobile bridge session…
-                </div>
-              ) : qrImage ? (
-                <div className="space-y-4">
-                  <div className="relative inline-block">
-                    {/* QR Code: Super Large (420px x 420px) */}
-                    <img
-                      src={qrImage}
-                      alt="WhatsApp Mobile QR code"
-                      className="mx-auto w-80 h-80 sm:w-[420px] sm:h-[420px] rounded-3xl bg-white p-5 shadow-2xl border-4 border-emerald-500/50 object-contain"
-                    />
-                    <div className="mt-4 inline-flex items-center gap-2 text-sm text-emerald-400 bg-emerald-500/10 px-4 py-1.5 rounded-full border border-emerald-500/30 font-semibold">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
-                      Auto-checking connection…
-                    </div>
-                  </div>
+              ) : (loading || pairing || qrPending) ? (
+                <div className="py-12 text-slate-300 text-base font-medium animate-pulse space-y-2">
+                  <div>Generating the full QR code…</div>
+                  <p className="text-sm text-slate-400 font-normal">
+                    This takes a few seconds. The code appears only after the whole image is ready.
+                  </p>
                 </div>
               ) : (
                 <div className="py-8 space-y-4">

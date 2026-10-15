@@ -83,9 +83,11 @@ def _inbox_error_message(exc: Exception) -> str:
     lower = text.lower()
     if "timed out" in lower or "timeout" in lower or "mailbox is busy" in lower:
         return (
-            "Could not reach the company mail server (IMAP). "
-            "SMTP may still work for sending — ask hosting to open/allow IMAP port 993 "
-            f"for the API host. Details: {text}"
+            "Inbox uses IMAP, and the mail server is not accepting IMAP from this network. "
+            "Ports 993 and 143 to mail.kafi-group.com time out. SMTP and webmail still work, "
+            "and the mailbox passwords are not the problem. "
+            "In WHM firewall, allow inbound TCP 993 and 143, then reload the inbox. "
+            f"Details: {text}"
         )
     return f"Could not read inbox: {text}"
 

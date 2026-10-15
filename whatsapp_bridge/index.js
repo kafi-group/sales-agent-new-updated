@@ -97,11 +97,28 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function waitForQrOrConnected(sessionObj, timeoutMs = 10000) {
+function qrImageIsComplete(sessionObj) {
+  if (!sessionObj) return false;
+  const url = sessionObj.qrDataUrl;
+  if (typeof url !== "string" || !url.startsWith("data:image/") || url.length < 80) return false;
+  return Boolean(sessionObj.qr && sessionObj.qrRenderedFor === sessionObj.qr);
+}
+
+async function renderQrDataUrl(qr) {
+  return QRCode.toDataURL(qr, {
+    errorCorrectionLevel: "M",
+    margin: 2,
+    width: 512,
+    type: "image/png",
+  });
+}
+
+async function waitForQrOrConnected(sessionObj, timeoutMs = 20000) {
   const started = Date.now();
   while (sessionObj && Date.now() - started < timeoutMs) {
     if (sessionObj.shuttingDown) break;
-    if (isReallyConnected(sessionObj) || sessionObj.qrDataUrl || sessionObj.qr) return sessionObj;
+    // Wait for the finished PNG. The raw pairing string arrives first and is not an image.
+    if (isReallyConnected(sessionObj) || qrImageIsComplete(sessionObj)) return sessionObj;
     await sleep(250);
   }
   return sessionObj;
@@ -288,8 +305,14 @@ async function initBaileysSession(sessionId, forceNew = false) {
         sessionObj.qr = qr;
         sessionObj.status = "qr-pending";
         sessionObj.connected = false;
+        // Drop any previous picture so callers cannot return a half-old code.
+        sessionObj.qrRenderedFor = null;
         try {
-          sessionObj.qrDataUrl = await QRCode.toDataURL(qr);
+          const dataUrl = await renderQrDataUrl(qr);
+          if (sessionObj.qr === qr && !sessionObj.shuttingDown) {
+            sessionObj.qrDataUrl = dataUrl;
+            sessionObj.qrRenderedFor = qr;
+          }
         } catch (err) {
           console.error(`[Session ${safeSessionId}] Error generating QR data URL:`, err);
         }
@@ -471,8 +494,9 @@ function sessionPayload(sessionId, sessionObj) {
     phone: live ? sessionObj.phone || null : null,
     profilePictureUrl: live ? sessionObj.profilePictureUrl || null : null,
     profile_picture_url: live ? sessionObj.profilePictureUrl || null : null,
-    qr: sessionObj.qr || null,
-    qrDataUrl: sessionObj.qrDataUrl || null,
+    // Never send the raw Baileys pairing text — the UI used to paint it as a broken PNG.
+    qr: null,
+    qrDataUrl: qrImageIsComplete(sessionObj) ? sessionObj.qrDataUrl : null,
   };
 }
 
@@ -509,12 +533,7 @@ app.get("/qr", async (req, res) => {
       sessionObj = await initBaileysSession(sessionId, false);
     }
 
-    sessionObj = await waitForQrOrConnected(sessionObj, 10000);
-
-    if (sessionObj && isReallyConnected(sessionObj)) {
-      return res.json(sessionPayload(sessionId, sessionObj));
-    }
-
+    sessionObj = await waitForQrOrConnected(sessionObj, 20000);
     return res.json(sessionPayload(sessionId, sessionObj));
   } catch (err) {
     return res.status(500).json({ error: err.message, session: sessionId });
@@ -533,13 +552,17 @@ app.post("/pair", async (req, res) => {
       req.query?.force === "1"
   );
   try {
-    if (!forceNew && hasSavedCreds(sessionId)) {
-      let sessionObj = await initBaileysSession(sessionId, false);
-      sessionObj = await waitForQrOrConnected(sessionObj, 10000);
+    if (!forceNew) {
+      // Keep an in-progress QR. Wiping here used to restart the socket before the PNG finished.
+      let sessionObj = activeSessions.get(sessionId);
+      if (!isLiveSession(sessionObj)) {
+        sessionObj = await initBaileysSession(sessionId, false);
+      }
+      sessionObj = await waitForQrOrConnected(sessionObj, 20000);
       return res.json(sessionPayload(sessionId, sessionObj));
     }
     let sessionObj = await initBaileysSession(sessionId, true);
-    sessionObj = await waitForQrOrConnected(sessionObj, 10000);
+    sessionObj = await waitForQrOrConnected(sessionObj, 20000);
     return res.json(sessionPayload(sessionId, sessionObj));
   } catch (err) {
     return res.status(500).json({ error: err.message, session: sessionId });
@@ -592,13 +615,171 @@ app.post("/logout", async (req, res) => {
   }
 });
 
+const WHATSAPP_DOC_MAX_BYTES = 16 * 1024 * 1024;
+
+function isAllowedDocumentUrl(raw) {
+  try {
+    const parsed = new URL(String(raw || ""));
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return false;
+    return /\/api\/catalogues\/[a-z0-9_-]+\/download$/i.test(parsed.pathname);
+  } catch {
+    return false;
+  }
+}
+
+async function lookupWhatsAppJid(sock, rawDigits) {
+  const attempts = [rawDigits, `${rawDigits}@s.whatsapp.net`];
+  let lastError = null;
+  for (const attempt of attempts) {
+    try {
+      const lookedUp = await sock.onWhatsApp(attempt);
+      const rows = Array.isArray(lookedUp) ? lookedUp : lookedUp ? [lookedUp] : [];
+      const hit = rows.find((row) => row && row.exists && row.jid);
+      if (hit) return String(hit.jid);
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  if (lastError) {
+    throw new Error(
+      `Could not check ${rawDigits} on WhatsApp (${lastError.message || "lookup failed"}). ` +
+        "The message was not sent."
+    );
+  }
+  return null;
+}
+
+function ackLevel(status) {
+  if (status && typeof status === "object" && typeof status.toNumber === "function") {
+    return ackLevel(status.toNumber());
+  }
+  if (status === 0 || status === "ERROR") return 0;
+  if (status === "PENDING") return 1;
+  if (status === "SERVER_ACK") return 2;
+  if (status === "DELIVERY_ACK") return 3;
+  if (status === "READ") return 4;
+  if (status === "PLAYED") return 5;
+  return typeof status === "number" ? status : null;
+}
+
+function watchDelivery(sock, timeoutMs) {
+  const buffered = [];
+  let messageId = "";
+  let settled = false;
+  let timer = null;
+  let resolveAck;
+  let rejectAck;
+  const promise = new Promise((resolve, reject) => {
+    resolveAck = resolve;
+    rejectAck = reject;
+  });
+
+  function cleanup() {
+    if (timer) clearTimeout(timer);
+    sock.ev.off("messages.update", onUpdate);
+    sock.ev.off("message-receipt.update", onReceipt);
+  }
+
+  function finish(ok, value) {
+    if (settled) return;
+    settled = true;
+    cleanup();
+    if (ok) resolveAck(value);
+    else rejectAck(value);
+  }
+
+  function consider(id, status) {
+    if (!messageId || id !== messageId) return false;
+    const level = ackLevel(status);
+    if (level === 0) {
+      finish(false, new Error("WhatsApp rejected the message before the recipient could receive it."));
+      return true;
+    }
+    if (typeof level === "number" && level >= 2) {
+      finish(true, level);
+      return true;
+    }
+    return false;
+  }
+
+  function onUpdate(updates) {
+    const list = Array.isArray(updates) ? updates : [updates];
+    if (!messageId) {
+      buffered.push(...list);
+      return;
+    }
+    for (const update of list) {
+      if (consider(update?.key?.id, update?.update?.status)) return;
+    }
+  }
+
+  function onReceipt(updates) {
+    const list = Array.isArray(updates) ? updates : [updates];
+    if (!messageId) {
+      for (const update of list) buffered.push({ key: update?.key, update: { status: 3 } });
+      return;
+    }
+    for (const update of list) {
+      if (consider(update?.key?.id, 3)) return;
+    }
+  }
+
+  sock.ev.on("messages.update", onUpdate);
+  sock.ev.on("message-receipt.update", onReceipt);
+  timer = setTimeout(() => {
+    finish(
+      false,
+      new Error(
+        "WhatsApp did not confirm delivery. The recipient did not get this message. " +
+          "Check that your linked phone is online, then try again."
+      )
+    );
+  }, timeoutMs);
+
+  return {
+    promise,
+    arm(id, initialStatus) {
+      messageId = id;
+      if (consider(id, initialStatus)) return;
+      for (const update of buffered.splice(0, buffered.length)) {
+        if (consider(update?.key?.id, update?.update?.status)) return;
+      }
+    },
+    stop() {
+      finish(true, null);
+    },
+  };
+}
+
+async function sendAndConfirm(sock, jid, content, timeoutMs) {
+  const watch = watchDelivery(sock, timeoutMs);
+  try {
+    const sent = await sock.sendMessage(jid, content);
+    const messageId = sent?.key?.id;
+    if (!messageId) {
+      watch.stop();
+      throw new Error("WhatsApp did not accept the message.");
+    }
+    watch.arm(messageId, sent.status);
+    const ack = await watch.promise;
+    return { messageId, ack };
+  } catch (err) {
+    watch.stop();
+    throw err;
+  }
+}
+
 app.post("/send", async (req, res) => {
   const sessionId = req.body?.session || req.body?.sessionId || "default";
   const toPhone = req.body?.to || req.body?.phone || req.body?.to_phone;
-  const message = req.body?.message || req.body?.text;
+  const message = req.body?.message || req.body?.text || "";
+  const documentUrl = (req.body?.document_url || req.body?.documentUrl || "").trim();
+  const filename = (req.body?.filename || req.body?.fileName || "catalogue.pdf").trim();
 
   if (!toPhone) return res.status(400).json({ error: "Missing recipient phone number (to)" });
-  if (!message) return res.status(400).json({ error: "Missing message text" });
+  if (!String(message).trim() && !documentUrl) {
+    return res.status(400).json({ error: "Missing message text" });
+  }
 
   try {
     let sessionObj = activeSessions.get(sessionId);
@@ -610,26 +791,59 @@ app.post("/send", async (req, res) => {
       });
     }
 
-    const { rawDigits, jid: defaultJid } = formatJid(toPhone);
-    let jid = defaultJid;
-
-    try {
-      const [onWa] = await sessionObj.sock.onWhatsApp(rawDigits);
-      if (onWa && onWa.exists && onWa.jid) {
-        jid = onWa.jid;
-      }
-    } catch (e) {
-      console.warn(`[Session ${sessionId}] onWhatsApp lookup fallback for ${rawDigits}:`, e?.message);
+    const { rawDigits } = formatJid(toPhone);
+    const jid = await lookupWhatsAppJid(sessionObj.sock, rawDigits);
+    if (!jid) {
+      return res.status(404).json({
+        error: `${rawDigits} is not on WhatsApp, so nothing was sent.`,
+      });
     }
 
-    const sent = await sessionObj.sock.sendMessage(jid, { text: message });
+    let payload;
+    let mode = "text";
+    if (documentUrl) {
+      if (!isAllowedDocumentUrl(documentUrl)) {
+        return res.status(400).json({ error: "Catalogue download URL was not accepted." });
+      }
+      const downloaded = await fetch(documentUrl);
+      if (!downloaded.ok) {
+        return res.status(502).json({
+          error: `Could not download the catalogue PDF (${downloaded.status}). Nothing was sent.`,
+        });
+      }
+      const bytes = Buffer.from(await downloaded.arrayBuffer());
+      if (!bytes.length) {
+        return res.status(502).json({ error: "Catalogue PDF was empty. Nothing was sent." });
+      }
+      if (bytes.length > WHATSAPP_DOC_MAX_BYTES) {
+        return res.status(413).json({
+          error: "Catalogue PDF is too large to attach on WhatsApp. Send the download link instead.",
+        });
+      }
+      payload = {
+        document: bytes,
+        mimetype: "application/pdf",
+        fileName: filename || "catalogue.pdf",
+        caption: String(message || "").trim() || undefined,
+      };
+      mode = "document";
+    } else {
+      payload = { text: String(message) };
+    }
+
+    const confirmMs = mode === "document" ? 40000 : 15000;
+    const confirmed = await sendAndConfirm(sessionObj.sock, jid, payload, confirmMs);
+    console.log(`[Session ${sessionId}] Delivered ${mode} to ${jid} ack=${confirmed.ack}`);
 
     return res.json({
       status: "sent",
+      delivered: true,
+      mode,
       session: sessionId,
       to: toPhone,
       jid,
-      messageId: sent.key.id,
+      messageId: confirmed.messageId,
+      ack: confirmed.ack,
     });
   } catch (err) {
     console.error(`[Session ${sessionId}] Send error:`, err);

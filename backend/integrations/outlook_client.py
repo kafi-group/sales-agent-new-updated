@@ -306,8 +306,9 @@ class OutlookClient:
         host = settings.mailbox_imap_host
         port = settings.mailbox_imap_port
         ssl_context, server_hostname = self._ssl_context(host)
-        # Hard cap so a hung IMAP server cannot pin the only uvicorn worker.
-        imap_timeout = 25
+        # 993/143 from this network are often dropped by the mail host firewall.
+        # Fail fast so one inbox request cannot pin the worker for 25s.
+        imap_timeout = 8
 
         if server_hostname:
 

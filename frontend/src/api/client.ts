@@ -347,10 +347,16 @@ function timeoutForPath(path: string): number {
   if (
     path.startsWith("/whatsapp-personal/status") ||
     path.startsWith("/whatsapp-personal/team-status") ||
-    path.startsWith("/whatsapp-personal/qr") ||
     path.startsWith("/whatsapp-personal/session")
   ) {
     return 10_000;
+  }
+  // QR generation waits on the bridge for a finished PNG (up to ~25s).
+  if (path.startsWith("/whatsapp-personal/qr") || path.startsWith("/whatsapp-personal/pair")) {
+    return 45_000;
+  }
+  if (path.startsWith("/whatsapp-personal/share-catalogues") || path.startsWith("/whatsapp-personal/send")) {
+    return 120_000;
   }
   if (path.startsWith("/whatsapp-personal/disconnect")) {
     return 12_000;
@@ -3575,7 +3581,8 @@ export const client = {
     request<Record<string, unknown>>("/whatsapp-personal/status"),
   getWhatsAppPersonalTeamStatus: () =>
     request<Array<Record<string, unknown>>>("/whatsapp-personal/team-status"),
-  getWhatsAppPersonalQr: () => request<Record<string, unknown>>("/whatsapp-personal/qr"),
+  getWhatsAppPersonalQr: () =>
+    request<Record<string, unknown>>("/whatsapp-personal/qr", { noRetry: true, timeoutMs: 45_000 }),
   getWhatsAppPersonalSession: () =>
     request<{ session_id: string }>("/whatsapp-personal/session"),
   disconnectWhatsAppPersonal: () =>
@@ -3588,12 +3595,33 @@ export const client = {
     const force = opts?.forceNew ? "?force=1" : "";
     return request<Record<string, unknown>>(`/whatsapp-personal/pair${force}`, {
       method: "POST",
+      noRetry: true,
+      timeoutMs: 45_000,
     });
   },
   sendWhatsAppPersonal: (payload: { to_phone: string; message: string }) =>
     request<Record<string, unknown>>("/whatsapp-personal/send", {
       method: "POST",
       body: JSON.stringify(payload),
+      noRetry: true,
+      timeoutMs: 45_000,
+    }),
+  shareCataloguesOnWhatsApp: (payload: {
+    to_phone: string;
+    catalogue_ids: string[];
+    message: string;
+  }) =>
+    request<{
+      ok: boolean;
+      delivered: boolean;
+      to: string;
+      attached_count: number;
+      files: Array<{ id: string; title?: string; mode: string; reason?: string }>;
+    }>("/whatsapp-personal/share-catalogues", {
+      method: "POST",
+      body: JSON.stringify(payload),
+      noRetry: true,
+      timeoutMs: 120_000,
     }),
   getTelegramPersonalStatus: () =>
     request<Record<string, unknown>>("/telegram-personal/status"),

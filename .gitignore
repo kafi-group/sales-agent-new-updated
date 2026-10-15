@@ -15,5 +15,7 @@ dist/
 *.log
 .vite/
 backend/storage/
+whatsapp_bridge/sessions/
+telegram_bridge/sessions/
 *.pyc
 .env.local

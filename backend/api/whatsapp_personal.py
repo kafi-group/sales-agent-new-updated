@@ -336,14 +336,13 @@ def whatsapp_personal_pair(
             url = result.get("qrDataUrl")
             return isinstance(url, str) and url.startswith("data:image/")
 
-        last_result: dict = {}
-        # Bridge draws the PNG before it answers. Leave room for one follow-up poll.
-        deadline = time.monotonic() + 32.0
         last_result = bridge.bridge_pair(
             user.id, username=user.username, force_new=force_new
         )
         if _pair_ready(last_result):
             return last_result
+        # Bridge already waited for the PNG. A short follow-up covers a late render.
+        deadline = time.monotonic() + 8.0
         while time.monotonic() < deadline:
             time.sleep(1.0)
             last_result = bridge.bridge_qr(user.id, username=user.username)

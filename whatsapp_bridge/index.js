@@ -9,6 +9,7 @@ const {
   useMultiFileAuthState,
   DisconnectReason,
   fetchLatestBaileysVersion,
+  Browsers,
 } = require("@whiskeysockets/baileys");
 
 const app = express();
@@ -20,7 +21,7 @@ const BRIDGE_SECRET = (process.env.WHATSAPP_BRIDGE_SECRET || "").trim();
 const BACKEND_WEBHOOK_URL = (
   process.env.BACKEND_WEBHOOK_URL ||
   process.env.KAFI_BACKEND_URL ||
-  "http://localhost:8000"
+  "http://127.0.0.1:8001"
 )
   .trim()
   .replace(/\/+$/, "");
@@ -105,22 +106,39 @@ function qrImageIsComplete(sessionObj) {
 }
 
 async function renderQrDataUrl(qr) {
+  // Low ECC keeps dense WhatsApp pairing strings scannable.
   return QRCode.toDataURL(qr, {
-    errorCorrectionLevel: "M",
+    errorCorrectionLevel: "L",
     margin: 2,
-    width: 512,
+    width: 480,
     type: "image/png",
   });
 }
 
-async function waitForQrOrConnected(sessionObj, timeoutMs = 20000) {
+async function ensureQrRendered(sessionObj) {
+  if (!sessionObj?.qr || qrImageIsComplete(sessionObj)) return sessionObj;
+  try {
+    const dataUrl = await renderQrDataUrl(sessionObj.qr);
+    if (sessionObj.qr && !sessionObj.shuttingDown) {
+      sessionObj.qrDataUrl = dataUrl;
+      sessionObj.qrRenderedFor = sessionObj.qr;
+    }
+  } catch (err) {
+    console.error("[QR] Render retry failed:", err?.message || err);
+  }
+  return sessionObj;
+}
+
+async function waitForQrOrConnected(sessionObj, timeoutMs = 28000) {
   const started = Date.now();
   while (sessionObj && Date.now() - started < timeoutMs) {
     if (sessionObj.shuttingDown) break;
+    await ensureQrRendered(sessionObj);
     // Wait for the finished PNG. The raw pairing string arrives first and is not an image.
     if (isReallyConnected(sessionObj) || qrImageIsComplete(sessionObj)) return sessionObj;
     await sleep(250);
   }
+  await ensureQrRendered(sessionObj);
   return sessionObj;
 }
 
@@ -272,8 +290,8 @@ async function initBaileysSession(sessionId, forceNew = false) {
       ...(version ? { version } : {}),
       auth: state,
       logger,
-      printQRInTerminal: false,
-      browser: ["KAFI Sales Agent", "Chrome", "124.0.0"],
+      // WhatsApp rejects custom/"Desktop" fingerprints with 428 and never emits a QR.
+      browser: Browsers.macOS("Chrome"),
       markOnlineOnConnect: false,
       syncFullHistory: false,
       connectTimeoutMs: 60_000,
@@ -307,11 +325,13 @@ async function initBaileysSession(sessionId, forceNew = false) {
         sessionObj.connected = false;
         // Drop any previous picture so callers cannot return a half-old code.
         sessionObj.qrRenderedFor = null;
+        console.log(`[Session ${safeSessionId}] QR received from WhatsApp, rendering image`);
         try {
           const dataUrl = await renderQrDataUrl(qr);
           if (sessionObj.qr === qr && !sessionObj.shuttingDown) {
             sessionObj.qrDataUrl = dataUrl;
             sessionObj.qrRenderedFor = qr;
+            console.log(`[Session ${safeSessionId}] QR image ready (${dataUrl.length} chars)`);
           }
         } catch (err) {
           console.error(`[Session ${safeSessionId}] Error generating QR data URL:`, err);
@@ -533,7 +553,12 @@ app.get("/qr", async (req, res) => {
       sessionObj = await initBaileysSession(sessionId, false);
     }
 
-    sessionObj = await waitForQrOrConnected(sessionObj, 20000);
+    sessionObj = await waitForQrOrConnected(sessionObj, 16000);
+    if (!isReallyConnected(sessionObj) && !qrImageIsComplete(sessionObj) && !hasSavedCreds(sessionId)) {
+      console.log(`[Session ${sessionId}] /qr timed out without image; starting a fresh pairing socket`);
+      sessionObj = await initBaileysSession(sessionId, true);
+      sessionObj = await waitForQrOrConnected(sessionObj, 18000);
+    }
     return res.json(sessionPayload(sessionId, sessionObj));
   } catch (err) {
     return res.status(500).json({ error: err.message, session: sessionId });
@@ -552,17 +577,23 @@ app.post("/pair", async (req, res) => {
       req.query?.force === "1"
   );
   try {
-    if (!forceNew) {
+    let sessionObj;
+    if (forceNew) {
+      sessionObj = await initBaileysSession(sessionId, true);
+    } else {
       // Keep an in-progress QR. Wiping here used to restart the socket before the PNG finished.
-      let sessionObj = activeSessions.get(sessionId);
+      sessionObj = activeSessions.get(sessionId);
       if (!isLiveSession(sessionObj)) {
         sessionObj = await initBaileysSession(sessionId, false);
       }
-      sessionObj = await waitForQrOrConnected(sessionObj, 20000);
-      return res.json(sessionPayload(sessionId, sessionObj));
     }
-    let sessionObj = await initBaileysSession(sessionId, true);
-    sessionObj = await waitForQrOrConnected(sessionObj, 20000);
+    sessionObj = await waitForQrOrConnected(sessionObj, 16000);
+    if (!isReallyConnected(sessionObj) && !qrImageIsComplete(sessionObj) && !hasSavedCreds(sessionId)) {
+      // Stale empty session never emits a scannable QR. Do not wipe saved creds here.
+      console.log(`[Session ${sessionId}] No QR after wait; forcing a fresh pairing socket`);
+      sessionObj = await initBaileysSession(sessionId, true);
+      sessionObj = await waitForQrOrConnected(sessionObj, 18000);
+    }
     return res.json(sessionPayload(sessionId, sessionObj));
   } catch (err) {
     return res.status(500).json({ error: err.message, session: sessionId });

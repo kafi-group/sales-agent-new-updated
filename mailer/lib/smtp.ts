@@ -306,7 +306,18 @@ export async function sendSmtp(options: {
     if (second.ok) return second;
     return {
       ok: false,
-      message: `${first.message} (also tried login as ${local}: ${second.message})`,
+      message:
+        `${first.message} (also tried login as ${local}: ${second.message}). ` +
+        `Mailbox password for ${creds.email} is wrong or out of date. ` +
+        "Update MAILBOX_*_PASSWORD on Railway (or Users → mailbox password), then retry.",
+    };
+  }
+  if (/535|authentication|login/i.test(first.message)) {
+    return {
+      ok: false,
+      message:
+        `${first.message}. Mailbox password for ${creds.email} is wrong or out of date. ` +
+        "Update MAILBOX_*_PASSWORD on Railway (or Users → mailbox password), then retry.",
     };
   }
   return first;

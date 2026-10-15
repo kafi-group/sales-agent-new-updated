@@ -111,9 +111,9 @@ export function WhatsAppMobilePage({ onError }: WhatsAppMobilePageProps) {
   const pairingLock = useRef(false);
   const refreshLock = useRef(false);
   const qrRef = useRef<Record<string, unknown> | null>(null);
+  const sawQrRef = useRef(false);
   const connected = isConnectedStatus(status);
   const connecting = isConnectingStatus(status);
-  const statusLabel = String(status?.status ?? (connected ? "connected" : "disconnected"));
   const connectedPhone = status?.phone
     ? String(status.phone)
     : status?.connectedPhone
@@ -161,9 +161,9 @@ export function WhatsAppMobilePage({ onError }: WhatsAppMobilePageProps) {
     };
     reader.readAsDataURL(file);
   }
-  const qrPending = statusLabel.toLowerCase() === "qr-pending";
   const qrImage = qrImageFromPayload(qr);
   qrRef.current = qr;
+  if (qrImage) sawQrRef.current = true;
 
   const refresh = useCallback(async (opts?: { silent?: boolean; skipQr?: boolean; includeTeam?: boolean }) => {
     if (pairingLock.current || refreshLock.current) return;
@@ -187,6 +187,7 @@ export function WhatsAppMobilePage({ onError }: WhatsAppMobilePageProps) {
       if (isConnectedStatus(st)) {
         setQr(null);
         qrRef.current = null;
+        sawQrRef.current = false;
         return;
       }
 
@@ -205,11 +206,13 @@ export function WhatsAppMobilePage({ onError }: WhatsAppMobilePageProps) {
         setStatus(qrData);
         setQr(null);
         qrRef.current = null;
+        sawQrRef.current = false;
         return;
       }
       if (qrImageFromPayload(qrData)) {
         setQr(qrData);
         qrRef.current = qrData;
+        sawQrRef.current = true;
       }
     } catch (e) {
       if (!opts?.silent) {
@@ -253,6 +256,7 @@ export function WhatsAppMobilePage({ onError }: WhatsAppMobilePageProps) {
     setCustomPhone(localStorage.getItem(`whatsapp_phone_number_${user?.id || "default"}`) || null);
     setStatus(null);
     setQr(null);
+    sawQrRef.current = false;
     setLoading(true);
     void refresh();
   }, [user?.id, refresh]);
@@ -260,9 +264,9 @@ export function WhatsAppMobilePage({ onError }: WhatsAppMobilePageProps) {
   const pollMs = useMemo(() => {
     if (connected) return 8_000;
     if (connecting) return 2_000;
-    if (qrPending || qrImage) return 4_000;
+    if (qrImage || pairing) return 4_000;
     return 8_000;
-  }, [connected, connecting, qrPending, qrImage]);
+  }, [connected, connecting, qrImage, pairing]);
 
   useEffect(() => {
     const timer = window.setInterval(
@@ -279,22 +283,24 @@ export function WhatsAppMobilePage({ onError }: WhatsAppMobilePageProps) {
   }, [refreshTeam]);
 
   async function handlePair(forceNew = false) {
-    if (forceNew) {
+    // Confirm only when replacing a live link. Disconnected accounts always need a fresh QR.
+    if (forceNew && connected) {
       const ok = window.confirm(
         `Generate a FRESH QR for ${userName}? This unlinks ONLY ${userName}'s WhatsApp Mobile session. ` +
           `Asim / Usman / Sadia / other accounts stay connected.`
       );
       if (!ok) return;
     }
+    const wipe = forceNew || !connected;
     pairingLock.current = true;
     setPairing(true);
     setNotice(null);
-    setStatus({ connected: false, status: "qr-pending" });
     setQr(null);
     qrRef.current = null;
+    sawQrRef.current = false;
     try {
-      let qrData = await client.pairWhatsAppPersonal({ forceNew });
-      for (let attempt = 0; attempt < 6; attempt += 1) {
+      let qrData = await client.pairWhatsAppPersonal({ forceNew: wipe });
+      for (let attempt = 0; attempt < 8; attempt += 1) {
         if (isConnectedStatus(qrData) || qrImageFromPayload(qrData)) break;
         await new Promise((r) => setTimeout(r, 1500));
         try {
@@ -308,21 +314,29 @@ export function WhatsAppMobilePage({ onError }: WhatsAppMobilePageProps) {
         setStatus(qrData);
         setQr(null);
         qrRef.current = null;
+        sawQrRef.current = false;
         setNotice(`${userName}'s WhatsApp is already connected.`);
       } else if (qrImageFromPayload(qrData)) {
         setQr(qrData);
         qrRef.current = qrData;
+        sawQrRef.current = true;
         setStatus({ ...(qrData ?? {}), connected: false, status: "qr-pending" });
         setNotice(
-          forceNew
+          wipe
             ? `Scan this fresh QR code with WhatsApp on ${userName}'s mobile phone. Keep this page open until it says Connected.`
             : `Scan this QR with WhatsApp on ${userName}'s phone. Keep this page open until it says Connected.`
         );
       } else {
-        setStatus({ connected: false, status: "qr-pending" });
-        setNotice("QR is still generating. Keep this page open — it will appear as soon as the full code is ready.");
+        setStatus({ connected: false, status: "disconnected" });
+        setNotice(null);
+        onError(
+          "The QR image was not ready. Check that the WhatsApp Mobile bridge is running, then tap Generate QR Code again."
+        );
       }
     } catch (e) {
+      setStatus({ connected: false, status: "disconnected" });
+      setQr(null);
+      qrRef.current = null;
       onError(e instanceof Error ? e.message : "Could not generate QR code");
     } finally {
       pairingLock.current = false;
@@ -343,6 +357,7 @@ export function WhatsAppMobilePage({ onError }: WhatsAppMobilePageProps) {
     setStatus({ connected: false, status: "disconnected" });
     setQr(null);
     qrRef.current = null;
+    sawQrRef.current = false;
     localStorage.removeItem(phoneStorageKey);
     setCustomPhone(null);
     try {
@@ -598,6 +613,7 @@ export function WhatsAppMobilePage({ onError }: WhatsAppMobilePageProps) {
                         className="block w-full h-auto"
                         onError={() => {
                           qrRef.current = null;
+                          sawQrRef.current = false;
                           setQr(null);
                         }}
                       />
@@ -608,7 +624,7 @@ export function WhatsAppMobilePage({ onError }: WhatsAppMobilePageProps) {
                     </div>
                   </div>
                 </div>
-              ) : connecting ? (
+              ) : connecting && sawQrRef.current ? (
                 <div className="py-10 space-y-3">
                   <div className="text-lg font-bold text-emerald-300">Phone scanned — finishing login…</div>
                   <p className="text-sm text-slate-300 max-w-md mx-auto leading-relaxed">
@@ -619,8 +635,8 @@ export function WhatsAppMobilePage({ onError }: WhatsAppMobilePageProps) {
                     Completing connection…
                   </div>
                 </div>
-              ) : (loading || pairing || qrPending) ? (
-                <div className="py-12 text-slate-300 text-base font-medium animate-pulse space-y-2">
+              ) : pairing || loading ? (
+                <div className="py-12 text-slate-300 text-base font-medium animate-pulse space-y-4">
                   <div>Generating the full QR code…</div>
                   <p className="text-sm text-slate-400 font-normal">
                     This takes a few seconds. The code appears only after the whole image is ready.
@@ -634,7 +650,7 @@ export function WhatsAppMobilePage({ onError }: WhatsAppMobilePageProps) {
                     variant="primary"
                     size="md"
                     disabled={pairing}
-                    onClick={() => void handlePair(false)}
+                    onClick={() => void handlePair(true)}
                     title="Generate QR code"
                     className="w-full justify-center text-base py-3 font-bold"
                   >

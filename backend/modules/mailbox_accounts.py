@@ -125,6 +125,10 @@ _ENV_MAILBOX_SLOTS: tuple[tuple[str, str, str], ...] = (
 
 _ENV_MAILBOX_BY_USERNAME: dict[str, tuple[str, str, str]] = {
     "admin": _ENV_MAILBOX_SLOTS[0],
+    "khalid": _ENV_MAILBOX_SLOTS[0],
+    "mrkhalid": _ENV_MAILBOX_SLOTS[0],
+    "khaled": _ENV_MAILBOX_SLOTS[0],
+    "khaledparacha": _ENV_MAILBOX_SLOTS[0],
     "asim": _ENV_MAILBOX_SLOTS[1],
     "usmankhan": _ENV_MAILBOX_SLOTS[2],
     "usman": _ENV_MAILBOX_SLOTS[2],
@@ -181,12 +185,31 @@ def resolve_user_mailbox(user) -> MailboxAccount | None:
     Works for every Sales Agent user with a mailbox on their row. Reps only log
     into Sales Agent (username/password). Mailbox password is stored encrypted
     on their user row (or Railway env) — they never enter it at send time.
+
+    Railway/backend .env is preferred when present. A stale encrypted DB password
+    previously caused SMTP 535 while MAILBOX_*_PASSWORD was already correct.
     """
     if user is None:
         return None
     if not bool(getattr(user, "mailbox_enabled", True)):
         return None
     email = (getattr(user, "mailbox_email", None) or "").strip()
+    username = getattr(user, "username", None)
+    env_account = resolve_mailbox_from_env(username, mailbox_email=email or None)
+    if env_account is not None:
+        # Keep the user's assigned address when set; always take the live env password.
+        display = (getattr(user, "mailbox_display_name", None) or "").strip() or None
+        if not display:
+            display = (getattr(user, "full_name", None) or "").strip() or None
+        use_email = email or env_account.email
+        return MailboxAccount(
+            email=use_email,
+            password=env_account.password,
+            display_name=public_sender_display_name(
+                use_email, display or env_account.display_name
+            ),
+        )
+
     enc = (getattr(user, "mailbox_password_encrypted", None) or "").strip()
     if email and enc:
         try:
@@ -197,12 +220,8 @@ def resolve_user_mailbox(user) -> MailboxAccount | None:
             display = public_sender_display_name(email, display)
             return MailboxAccount(email=email, password=password, display_name=display)
         except ValueError:
-            pass
-    # DB missing/corrupt decrypt → Railway env by username or mailbox address
-    return resolve_mailbox_from_env(
-        getattr(user, "username", None),
-        mailbox_email=email or None,
-    )
+            return None
+    return None
 
 
 def user_mailbox_configured(user) -> bool:

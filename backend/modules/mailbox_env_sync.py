@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 # app username -> (email_attr, password_attr, display_attr)
 _ENV_USER_MAILBOXES: tuple[tuple[str, str, str, str], ...] = (
     ("admin", "mailbox_admin_email", "mailbox_admin_password", "mailbox_admin_display_name"),
+    ("khalid", "mailbox_admin_email", "mailbox_admin_password", "mailbox_admin_display_name"),
     ("asim", "mailbox_asim_email", "mailbox_asim_password", "mailbox_asim_display_name"),
     ("usmankhan", "mailbox_usman_email", "mailbox_usman_password", "mailbox_usman_display_name"),
     ("sadia", "mailbox_sadia_email", "mailbox_sadia_password", "mailbox_sadia_display_name"),

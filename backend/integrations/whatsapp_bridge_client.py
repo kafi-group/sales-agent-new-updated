@@ -78,50 +78,51 @@ def _headers() -> dict[str, str]:
 
 # Keep QR/bridge calls short so a disconnect cannot starve email, Cloud inbox, or leads.
 _STATUS_TIMEOUT = 4.0
-# Bridge waits up to ~20s for a finished PNG. These must outlast that wait.
-_QR_TIMEOUT = 24.0
-_PAIR_TIMEOUT = 28.0
+# Bridge waits up to ~28s for a finished PNG. These must outlast that wait.
+_QR_TIMEOUT = 32.0
+_PAIR_TIMEOUT = 38.0
 _DISCONNECT_TIMEOUT = 5.0
 _SEND_TIMEOUT = 30.0
 _SEND_DOCUMENT_TIMEOUT = 55.0
 
 
+def _first_url(*candidates: str | None) -> str:
+    for raw in candidates:
+        val = (raw or "").strip().rstrip("/")
+        if val:
+            return val
+    return ""
+
+
 def _base_url(user_id: int | None = None, username: str | None = None) -> str:
-    """Resolve the dedicated WhatsApp bridge for this Sales Agent login (any PC)."""
+    """Resolve the WhatsApp bridge for this Sales Agent login.
+
+    Per-user URLs win when set. Otherwise WHATSAPP_BRIDGE_URL (local or a
+    single Railway service) is used so dead hardcoded defaults cannot block QR.
+    """
     owner = bridge_owner_key(username, user_id)
     clean_name = (username or "").strip().lower()
+    general = _first_url(settings.whatsapp_bridge_url)
 
     if owner == "khalid":
-        custom = (settings.whatsapp_bridge_url_khalid or settings.whatsapp_bridge_url_admin or "").strip().rstrip("/")
-        if custom:
-            return custom
-        return DEFAULT_USER_BRIDGES["khalid"]
+        custom = _first_url(settings.whatsapp_bridge_url_khalid, settings.whatsapp_bridge_url_admin)
+        return custom or general or DEFAULT_USER_BRIDGES["khalid"]
     if owner == "asim":
-        custom = (settings.whatsapp_bridge_url_asim or "").strip().rstrip("/")
-        if custom:
-            return custom
-        return DEFAULT_USER_BRIDGES["asim"]
+        custom = _first_url(settings.whatsapp_bridge_url_asim)
+        return custom or general or DEFAULT_USER_BRIDGES["asim"]
     if owner == "usman":
-        custom = (settings.whatsapp_bridge_url_usman or "").strip().rstrip("/")
-        if custom:
-            return custom
-        return DEFAULT_USER_BRIDGES["usman"]
+        custom = _first_url(settings.whatsapp_bridge_url_usman)
+        return custom or general or DEFAULT_USER_BRIDGES["usman"]
     if owner == "sadia":
-        custom = (settings.whatsapp_bridge_url_sadia or "").strip().rstrip("/")
-        if custom:
-            return custom
-        return DEFAULT_USER_BRIDGES["sadia"]
+        custom = _first_url(settings.whatsapp_bridge_url_sadia)
+        return custom or general or DEFAULT_USER_BRIDGES["sadia"]
 
     if clean_name and clean_name in DEFAULT_USER_BRIDGES:
-        return DEFAULT_USER_BRIDGES[clean_name]
+        return general or DEFAULT_USER_BRIDGES[clean_name]
     if user_id is not None and user_id in DEFAULT_USER_ID_BRIDGES:
-        return DEFAULT_USER_ID_BRIDGES[user_id]
+        return general or DEFAULT_USER_ID_BRIDGES[user_id]
 
-    # Unknown login: keep a unique session id, but do not steal Khalid's container.
-    general = (settings.whatsapp_bridge_url or "").strip().rstrip("/")
-    if general:
-        return general
-    return DEFAULT_USER_BRIDGES["khalid"]
+    return general or DEFAULT_USER_BRIDGES["khalid"]
 
 
 def _extract_phone_number(data: dict[str, Any]) -> str | None:
@@ -256,45 +257,60 @@ def invalidate_status_cache(user_id: int | None = None) -> None:
             _status_cache.pop(int(user_id), None)
 
 
+def _unreachable(base_url: str) -> RuntimeError:
+    return RuntimeError(
+        f"WhatsApp bridge is not reachable at {base_url}. "
+        "Start the WhatsApp Mobile bridge, then tap Generate QR Code again."
+    )
+
+
 def bridge_qr(user_id: int, username: str | None = None) -> dict[str, Any]:
     session = bridge_session_id(user_id, username=username)
     base_url = _base_url(user_id=user_id, username=username)
-    with httpx.Client(timeout=_QR_TIMEOUT) as client:
-        resp = client.get(
-            f"{base_url}/qr",
-            params={"session": session},
-            headers=_headers(),
-        )
-        if resp.status_code == 404:
-            body: dict[str, Any] = {}
-            try:
-                parsed = resp.json()
-                if isinstance(parsed, dict):
-                    body = parsed
-            except Exception:  # noqa: BLE001
-                pass
-            body.setdefault("session", session)
-            err = str(body.get("error") or "").lower()
-            if "connected" in err or body.get("status") == "connected":
-                return _normalize_status({**body, "status": "connected", "qr": None})
-            return {**body, "session": session, "connected": False, "qr": None}
-        resp.raise_for_status()
-        if _response_is_png(resp):
-            return _png_qr_payload(session, resp.content)
-        try:
-            data = resp.json()
-        except Exception:  # noqa: BLE001
-            if resp.content:
+    try:
+        with httpx.Client(timeout=_QR_TIMEOUT) as client:
+            resp = client.get(
+                f"{base_url}/qr",
+                params={"session": session},
+                headers=_headers(),
+            )
+            if resp.status_code == 404:
+                body: dict[str, Any] = {}
+                try:
+                    parsed = resp.json()
+                    if isinstance(parsed, dict):
+                        body = parsed
+                except Exception:  # noqa: BLE001
+                    pass
+                body.setdefault("session", session)
+                err = str(body.get("error") or "").lower()
+                if "connected" in err or body.get("status") == "connected":
+                    return _normalize_status({**body, "status": "connected", "qr": None})
+                # Railway HTML 404 for a missing service is not a "QR not ready" payload.
+                if not body.get("status") and not body.get("error"):
+                    raise _unreachable(base_url)
+                return {**body, "session": session, "connected": False, "qr": None}
+            resp.raise_for_status()
+            if _response_is_png(resp):
                 return _png_qr_payload(session, resp.content)
-            return {"session": session, "connected": False, "qr": None}
-        if isinstance(data, dict):
-            data.setdefault("session", session)
-            qr_val = data.get("qr") or data.get("qrDataUrl") or data.get("dataUrl")
-            if isinstance(qr_val, str) and qr_val and not str(qr_val).startswith("data:"):
-                if qr_val.startswith("iVBOR") or qr_val.startswith("/9j"):
-                    data["qrDataUrl"] = f"data:image/png;base64,{qr_val}"
-            return publish_qr_fields(_normalize_status(data))
-        return {"session": session, "connected": False, "qr": None, "qrDataUrl": None}
+            try:
+                data = resp.json()
+            except Exception:  # noqa: BLE001
+                if resp.content:
+                    return _png_qr_payload(session, resp.content)
+                return {"session": session, "connected": False, "qr": None}
+            if isinstance(data, dict):
+                data.setdefault("session", session)
+                qr_val = data.get("qr") or data.get("qrDataUrl") or data.get("dataUrl")
+                if isinstance(qr_val, str) and qr_val and not str(qr_val).startswith("data:"):
+                    if qr_val.startswith("iVBOR") or qr_val.startswith("/9j"):
+                        data["qrDataUrl"] = f"data:image/png;base64,{qr_val}"
+                return publish_qr_fields(_normalize_status(data))
+            return {"session": session, "connected": False, "qr": None, "qrDataUrl": None}
+    except RuntimeError:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise _unreachable(base_url) from exc
 
 
 def bridge_pair(
@@ -307,29 +323,32 @@ def bridge_pair(
     """
     session = bridge_session_id(user_id, username=username)
     base_url = _base_url(user_id=user_id, username=username)
-    with httpx.Client(timeout=_PAIR_TIMEOUT) as client:
-        resp = client.post(
-            f"{base_url}/pair",
-            json={
-                "session": session,
-                "sessionId": session,
-                "forceNew": bool(force_new),
-                "force": bool(force_new),
-            },
-            headers=_headers(),
-        )
-        resp.raise_for_status()
-        if _response_is_png(resp):
-            return _png_qr_payload(session, resp.content)
-        data = resp.json() if resp.content else {}
-        if not isinstance(data, dict):
-            data = {"session": session, "connected": False, "qr": None}
-        data.setdefault("session", session)
-        qr_val = data.get("qr") or data.get("qrDataUrl") or data.get("dataUrl")
-        if isinstance(qr_val, str) and qr_val and not str(qr_val).startswith("data:"):
-            if qr_val.startswith("iVBOR") or qr_val.startswith("/9j"):
-                data["qrDataUrl"] = f"data:image/png;base64,{qr_val}"
-        return publish_qr_fields(_normalize_status(data))
+    try:
+        with httpx.Client(timeout=_PAIR_TIMEOUT) as client:
+            resp = client.post(
+                f"{base_url}/pair",
+                json={
+                    "session": session,
+                    "sessionId": session,
+                    "forceNew": bool(force_new),
+                    "force": bool(force_new),
+                },
+                headers=_headers(),
+            )
+            resp.raise_for_status()
+            if _response_is_png(resp):
+                return _png_qr_payload(session, resp.content)
+            data = resp.json() if resp.content else {}
+            if not isinstance(data, dict):
+                data = {"session": session, "connected": False, "qr": None}
+            data.setdefault("session", session)
+            qr_val = data.get("qr") or data.get("qrDataUrl") or data.get("dataUrl")
+            if isinstance(qr_val, str) and qr_val and not str(qr_val).startswith("data:"):
+                if qr_val.startswith("iVBOR") or qr_val.startswith("/9j"):
+                    data["qrDataUrl"] = f"data:image/png;base64,{qr_val}"
+            return publish_qr_fields(_normalize_status(data))
+    except Exception as exc:  # noqa: BLE001
+        raise _unreachable(base_url) from exc
 
 
 def bridge_disconnect(user_id: int, username: str | None = None) -> dict[str, Any]:

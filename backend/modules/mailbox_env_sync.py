@@ -30,7 +30,8 @@ def sync_mailboxes_from_env(db: Session) -> list[str]:
     updated: list[str] = []
     for username, email_attr, password_attr, display_attr in _ENV_USER_MAILBOXES:
         email = (getattr(settings, email_attr, None) or "").strip()
-        password = getattr(settings, password_attr, None) or ""
+        # Trim — leading/trailing spaces or CR from .env cause SMTP 535.
+        password = (getattr(settings, password_attr, None) or "").strip()
         display = (getattr(settings, display_attr, None) or "").strip() or None
         if not email or not password:
             continue

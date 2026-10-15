@@ -5841,14 +5841,6 @@ export interface AiSalesAgentRunner {
   sequence_mode?: boolean;
 }
 
-export interface AiSalesBulkEmailPersonaSettings {
-  template_id: number | null;
-  from_mailbox_email: string;
-  cc: string;
-  subject: string;
-  body: string;
-}
-
 export interface AiSalesScheduledStart {
   id: string;
   persona: "female" | "male";
@@ -5867,13 +5859,8 @@ export interface AiSalesAutoModeSettings {
   call_mode: boolean;
   send_email_after_call: boolean;
   send_whatsapp_after_call: boolean;
-  bulk_email_when_no_call: boolean;
   study_products: boolean;
   product_brief: string;
-  bulk_email_by_persona?: {
-    female: AiSalesBulkEmailPersonaSettings;
-    male: AiSalesBulkEmailPersonaSettings;
-  };
   scheduled_starts?: AiSalesScheduledStart[];
 }
 

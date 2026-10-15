@@ -4,6 +4,7 @@ import {
   type PictureLibraryGroup,
   type PictureLibraryImage,
 } from "../api/client";
+import { rewriteInlineMediaUrl } from "../lib/hostInlineImages";
 
 interface PictureLibraryManagerProps {
   onError: (message: string) => void;
@@ -240,8 +241,9 @@ export function PictureLibraryManager({
   }
 
   function handleCopyUrl(img: PictureLibraryImage) {
-    if (!img.url) return;
-    navigator.clipboard.writeText(img.url);
+    const href = rewriteInlineMediaUrl(img.url);
+    if (!href) return;
+    navigator.clipboard.writeText(href);
     setCopiedId(img.id);
     setTimeout(() => setCopiedId(null), 2000);
   }
@@ -514,10 +516,14 @@ export function PictureLibraryManager({
                           title="Click to preview large"
                         >
                           <img
-                            src={img.url}
+                            src={rewriteInlineMediaUrl(img.url)}
                             alt={img.caption || img.filename}
                             loading="lazy"
                             className="w-full h-full object-contain p-1 group-hover:scale-105 transition duration-200"
+                            onError={(e) => {
+                              e.currentTarget.alt = "Missing — re-upload this picture";
+                              e.currentTarget.style.opacity = "0.2";
+                            }}
                           />
                           <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-sm text-[10px] text-slate-300 font-mono">
                             {formatBytes(img.size)}
@@ -642,7 +648,7 @@ export function PictureLibraryManager({
             </div>
             <div className="p-4 flex items-center justify-center max-h-[75vh] overflow-hidden bg-black/50">
               <img
-                src={previewImage.url}
+                src={rewriteInlineMediaUrl(previewImage.url)}
                 alt={previewImage.caption || previewImage.filename}
                 className="max-h-[70vh] max-w-full object-contain rounded-lg"
               />

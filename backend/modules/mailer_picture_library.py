@@ -27,6 +27,22 @@ _DATA_PATH = Path(__file__).resolve().parent.parent / "data" / "mailer_picture_l
 _LOCK = threading.RLock()
 _STATE_ID = 1
 _LEGACY_SEEDED = False
+_INLINE_MEDIA_RE = re.compile(r"/api/mailer/inline-media/([^/?#]+)", re.IGNORECASE)
+
+
+def _live_inline_media_url(url: str, media_id: str = "") -> str:
+    """Rewrite stored hosts (old Railway / localhost) to the live public API."""
+    from modules import email_tracking
+
+    raw = (url or "").strip()
+    match = _INLINE_MEDIA_RE.search(raw)
+    mid = (match.group(1) if match else media_id).strip()
+    if not mid:
+        return raw
+    base = email_tracking.public_api_base()
+    if not base:
+        return raw
+    return f"{base}/api/mailer/inline-media/{mid}"
 
 
 def _now() -> str:
@@ -55,7 +71,7 @@ def _normalize_groups(groups_raw: Any) -> list[dict[str, Any]]:
             if not isinstance(img, dict):
                 continue
             mid = str(img.get("id") or "").strip()
-            url = str(img.get("url") or "").strip()
+            url = _live_inline_media_url(str(img.get("url") or "").strip(), mid)
             if not mid or not url:
                 continue
             images.append(

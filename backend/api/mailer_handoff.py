@@ -425,7 +425,8 @@ def create_mailer_handoff(
             detail="None of the selected leads have a contact email",
         )
 
-    expires_in = 20 * 60
+    # Long enough to compose, attach pictures, and send without the JWT dying.
+    expires_in = 8 * 60 * 60
     now = datetime.now(timezone.utc)
     token_payload = {
         "user_id": user.id,
@@ -897,6 +898,8 @@ def get_mailer_inline_media(media_id: str):
         headers={
             "Cache-Control": "public, max-age=86400",
             "Content-Disposition": f'{disposition}; filename="{display}"',
+            "Access-Control-Allow-Origin": "*",
+            "Cross-Origin-Resource-Policy": "cross-origin",
         },
     )
 

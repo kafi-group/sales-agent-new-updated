@@ -8,6 +8,7 @@ import {
 } from "../api/client";
 import { IconSearch } from "../components/icons/AppIcons";
 import { ProseTextarea } from "../components/ProseTextField";
+import { WhatsAppTemplatePicker } from "../components/WhatsAppTemplatePicker";
 import { autocorrectText } from "../utils/spelling";
 import {
   markWhatsAppThreadSeen,
@@ -101,9 +102,12 @@ export function WhatsAppInboxPage({
   const [loadingThread, setLoadingThread] = useState(false);
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
-  const [needsTemplate, setNeedsTemplate] = useState(false);
+  /** Template picker open — proactive, after 24h fail, or when session window is closed. */
+  const [showTemplatePanel, setShowTemplatePanel] = useState(false);
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
   const [templateId, setTemplateId] = useState("");
+  const [templateSearch, setTemplateSearch] = useState("");
   const [variables, setVariables] = useState<string[]>([]);
   const [config, setConfig] = useState<WhatsAppConfig | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -156,7 +160,7 @@ export function WhatsAppInboxPage({
     async (conversation: WhatsAppConversation, options?: { silent?: boolean }) => {
       if (!options?.silent) {
         setSelected(conversation);
-        setNeedsTemplate(false);
+        setShowTemplatePanel(!conversation.within_session_window);
         setReply("");
         setLoadingThread(true);
       }
@@ -254,15 +258,30 @@ export function WhatsAppInboxPage({
   }, [selectedTemplate]);
 
   useEffect(() => {
-    if (!needsTemplate) return;
+    if (!showTemplatePanel) return;
+    let cancelled = false;
+    setTemplatesLoading(true);
     client
       .listWhatsAppTemplates(true)
       .then((rows) => {
+        if (cancelled) return;
         setTemplates(rows);
-        if (rows.length > 0) setTemplateId(String(rows[0].id));
+        if (rows.length > 0) {
+          setTemplateId((prev) =>
+            prev && rows.some((t) => String(t.id) === prev) ? prev : String(rows[0].id),
+          );
+        }
       })
-      .catch(() => setTemplates([]));
-  }, [needsTemplate]);
+      .catch(() => {
+        if (!cancelled) setTemplates([]);
+      })
+      .finally(() => {
+        if (!cancelled) setTemplatesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [showTemplatePanel]);
 
   async function handleSend() {
     if (!selected) return;
@@ -283,22 +302,23 @@ export function WhatsAppInboxPage({
           result.needs_template ||
           /template|24|window|re-engagement|131047/i.test(message)
         ) {
-          setNeedsTemplate(true);
+          setShowTemplatePanel(true);
         }
         onError(message);
-        await loadThread(selected);
+        // Silent refresh so we don't reset the template panel from within_session_window.
+        await loadThread(selected, { silent: true });
         await refreshConversations({ silent: true });
         return;
       }
       setReply("");
-      setNeedsTemplate(false);
+      if (selected.within_session_window) setShowTemplatePanel(false);
       setNotice("Message sent.");
-      await loadThread(selected);
+      await loadThread(selected, { silent: true });
       await refreshConversations({ silent: true });
     } catch (e) {
       const message = e instanceof Error ? e.message : "Failed to send reply";
       if (/template|24|window|re-engagement|131047/i.test(message)) {
-        setNeedsTemplate(true);
+        setShowTemplatePanel(true);
       } else {
         onError(message);
       }
@@ -323,9 +343,10 @@ export function WhatsAppInboxPage({
         template_variables: variables,
         to_phone: selected.contact_phone || undefined,
       });
-      await loadThread(selected);
+      await loadThread(selected, { silent: true });
       await refreshConversations({ silent: true });
       if (!result.sent) {
+        setShowTemplatePanel(true);
         onError(
           result.send_message ||
             "Template send failed — Meta did not accept the message. Check token, Phone Number ID, and template approval.",
@@ -333,13 +354,13 @@ export function WhatsAppInboxPage({
         return;
       }
       setReply("");
-      setNeedsTemplate(false);
+      setShowTemplatePanel(false);
       setNotice("Template accepted by Meta — wait for delivered/read on the bubble.");
     } catch (e) {
       onError(e instanceof Error ? e.message : "Failed to send with template");
       if (selected) {
         try {
-          await loadThread(selected);
+          await loadThread(selected, { silent: true });
         } catch {
           /* ignore */
         }
@@ -613,56 +634,63 @@ export function WhatsAppInboxPage({
                 )}
               </div>
 
-              {needsTemplate && (
+              {showTemplatePanel && (
                 <div className="mx-4 mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 space-y-2">
-                  <p className="text-sm text-amber-200">
-                    Outside the 24h reply window — select an approved template to send instead.
-                  </p>
-                  {templates.length === 0 ? (
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm text-amber-200">
+                      {selected.within_session_window
+                        ? "Send an approved Meta template from this chat."
+                        : "Outside the 24h reply window — select an approved template to send."}
+                    </p>
+                    {selected.within_session_window ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowTemplatePanel(false)}
+                        className="shrink-0 text-xs text-amber-200/80 hover:text-amber-100"
+                      >
+                        Hide
+                      </button>
+                    ) : null}
+                  </div>
+                  {templatesLoading ? (
+                    <p className="text-xs text-amber-200/80">Loading templates…</p>
+                  ) : templates.length === 0 ? (
                     <p className="text-xs text-amber-200/80">
                       No approved templates synced yet. Open{" "}
                       <strong>WhatsApp templates</strong> and sync from Meta.
                     </p>
                   ) : (
                     <>
-                      <select
-                        value={templateId}
-                        onChange={(e) => setTemplateId(e.target.value)}
-                        className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm"
-                      >
-                        {templates.map((t) => (
-                          <option key={t.id} value={t.id}>
-                            {t.name} ({t.language})
-                          </option>
-                        ))}
-                      </select>
-                      {variables.map((value, index) => (
-                        <input
-                          key={index}
-                          value={value}
-                          onChange={(e) =>
-                            setVariables((prev) =>
-                              prev.map((v, i) => (i === index ? e.target.value : v)),
-                            )
-                          }
-                          placeholder={`Variable {{${index + 1}}}`}
-                          className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm"
-                        />
-                      ))}
+                      <WhatsAppTemplatePicker
+                        templates={templates}
+                        loading={templatesLoading}
+                        templateId={templateId}
+                        onTemplateIdChange={setTemplateId}
+                        search={templateSearch}
+                        onSearchChange={setTemplateSearch}
+                        variables={variables}
+                        onVariablesChange={setVariables}
+                        leadContext={{
+                          company_name: selected.company_name,
+                          contact_name: selected.contact_name,
+                          country: null,
+                        }}
+                        compact
+                      />
                       <button
                         type="button"
                         onClick={() => void handleSendWithTemplate()}
-                        disabled={sending}
+                        disabled={sending || !selectedTemplate}
                         className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-sm font-medium disabled:opacity-50"
                       >
-                        {sending ? "Sending…" : "Send with template"}
+                        {sending ? "Sending…" : "Send template"}
                       </button>
                     </>
                   )}
                 </div>
               )}
 
-              <div className="p-4 border-t border-slate-800 flex gap-2">
+              <div className="p-4 border-t border-slate-800 flex flex-wrap gap-2">
                 <ProseTextarea
                   value={reply}
                   onChange={setReply}
@@ -673,18 +701,34 @@ export function WhatsAppInboxPage({
                   placeholder={
                     selected.within_session_window
                       ? "Type a personal reply…"
-                      : "24h window closed — use a template, or wait for them to message again"
+                      : "24h window closed — use Send template below"
                   }
-                  className="flex-1 rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200"
+                  className="flex-1 min-w-[12rem] rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200"
                 />
-                <button
-                  type="button"
-                  onClick={() => void handleSend()}
-                  disabled={sending || !reply.trim()}
-                  className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-sm font-medium disabled:opacity-50 self-end"
-                >
-                  {sending ? "Sending…" : "Send"}
-                </button>
+                <div className="flex gap-2 self-end">
+                  <button
+                    type="button"
+                    onClick={() => setShowTemplatePanel((open) => !open)}
+                    disabled={sending}
+                    className="px-3 py-2 rounded-lg border border-emerald-600/50 text-emerald-300 hover:bg-emerald-600/10 text-sm font-medium disabled:opacity-50"
+                    title="Send an approved WhatsApp template"
+                  >
+                    {showTemplatePanel ? "Hide template" : "Send template"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleSend()}
+                    disabled={sending || !reply.trim() || !selected.within_session_window}
+                    className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-sm font-medium disabled:opacity-50"
+                    title={
+                      selected.within_session_window
+                        ? "Send free-text reply"
+                        : "Free text blocked outside 24h — use Send template"
+                    }
+                  >
+                    {sending ? "Sending…" : "Send"}
+                  </button>
+                </div>
               </div>
             </>
           )}

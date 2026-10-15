@@ -1,5 +1,13 @@
 {
   "framework": "nextjs",
   "buildCommand": "npm run build",
-  "installCommand": "npm install"
+  "installCommand": "npm install",
+  "functions": {
+    "app/api/send/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/send-batch/route.ts": {
+      "maxDuration": 60
+    }
+  }
 }

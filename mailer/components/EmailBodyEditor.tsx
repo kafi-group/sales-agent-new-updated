@@ -11,6 +11,7 @@ import {
   type MouseEvent,
   type ReactNode,
 } from "react";
+import { rewriteInlineMediaInHtml, rewriteInlineMediaUrl } from "../lib/api";
 import { normalizeEditorTextColor, getComposeDefaultTextColor, getMailerUiTheme } from "../lib/emailTextColor";
 import {
   hostDataUriImagesInBrowser,
@@ -123,7 +124,7 @@ function Divider() {
 }
 
 function imgHtml(url: string, filename: string): string {
-  const safeUrl = url.replace(/"/g, "");
+  const safeUrl = rewriteInlineMediaUrl(url).replace(/"/g, "");
   const safeName = (filename || "image").replace(/"/g, "");
   return `<p><img src="${safeUrl}" alt="${safeName}" style="max-width:100%;height:auto;border-radius:6px;margin:8px 0;display:block;" /></p>`;
 }
@@ -157,7 +158,10 @@ export const EmailBodyEditor = forwardRef<EmailBodyEditorHandle, EmailBodyEditor
     useEffect(() => {
       const el = editorRef.current;
       if (!el) return;
-      const next = normalizeEditorTextColor(plainTextToEditorHtml(value), uiTheme);
+      const next = normalizeEditorTextColor(
+        rewriteInlineMediaInHtml(plainTextToEditorHtml(value)),
+        uiTheme,
+      );
       if (next === lastHtml.current) return;
       if (el.innerHTML === next) {
         lastHtml.current = next;

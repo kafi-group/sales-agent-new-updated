@@ -2,7 +2,7 @@
 
 import type { PersonalizeLead } from "@/lib/personalizeEmail";
 
-const PRODUCTION_API_BASE = "https://kafi-sales-agent-production.up.railway.app/api";
+const PRODUCTION_API_BASE = "https://sales-agent-new-updated-production.up.railway.app/api";
 
 function apiBase(): string {
   const candidates = [

@@ -20,6 +20,16 @@ export function inlineMediaPublicUrl(attachmentId: string): string {
   return `${RAILWAY_API}/mailer/inline-media/${attachmentId}`;
 }
 
+const INLINE_MEDIA_RE = /\/(?:api\/)?mailer\/inline-media\/([^/?#]+)/i;
+
+/** Old Railway / localhost URLs 404 — always load from the live public API. */
+export function rewriteInlineMediaUrl(url: string): string {
+  const raw = (url || "").trim();
+  const match = raw.match(INLINE_MEDIA_RE);
+  if (!match) return raw;
+  return inlineMediaPublicUrl(match[1]);
+}
+
 /** Absolute API origin used for inline email images in previews/sends. */
 export function emailMediaApiBase(): string {
   return RAILWAY_API.replace(/\/api$/, "");

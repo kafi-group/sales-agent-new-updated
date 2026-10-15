@@ -13,7 +13,7 @@ import {
   type PictureLibraryImage,
 } from "@/lib/pictureLibrary";
 import { useAuth } from "@/components/AuthProvider";
-import { getStoredToken, loginFromHandoff } from "@/lib/api";
+import { getStoredToken, loginFromHandoff, rewriteInlineMediaUrl } from "@/lib/api";
 
 export type PictureSidebarProps = {
   isOpen: boolean;
@@ -111,7 +111,7 @@ export function PictureSidebar({
   function handleSelectImage(e: ReactMouseEvent, img: PictureLibraryImage) {
     e.preventDefault();
     e.stopPropagation();
-    onInsert(img.url, img.caption || img.filename);
+            onInsert(rewriteInlineMediaUrl(img.url), img.caption || img.filename);
     setLastInsertedId(img.id);
     // Keep panel open so user can insert 1, 2, 3 or more pictures successively!
     setTimeout(() => {
@@ -313,7 +313,7 @@ export function PictureSidebar({
                   }}
                 >
                   <img
-                    src={image.url}
+                    src={rewriteInlineMediaUrl(image.url)}
                     alt={image.caption || image.filename}
                     loading="lazy"
                     style={{
@@ -322,6 +322,18 @@ export function PictureSidebar({
                       objectFit: "contain",
                       display: "block",
                       background: "#050912",
+                    }}
+                    onError={(e) => {
+                      const el = e.currentTarget;
+                      el.style.display = "none";
+                      const wrap = el.parentElement;
+                      if (!wrap || wrap.querySelector("[data-missing-pic]")) return;
+                      const note = document.createElement("div");
+                      note.dataset.missingPic = "1";
+                      note.textContent = "Image file missing — re-upload in Picture library";
+                      note.style.cssText =
+                        "height:150px;display:flex;align-items:center;justify-content:center;padding:0.75rem;color:#94a3b8;font-size:0.75rem;text-align:center;background:#050912;";
+                      wrap.appendChild(note);
                     }}
                   />
                   <div

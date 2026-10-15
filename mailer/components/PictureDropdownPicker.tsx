@@ -13,7 +13,7 @@ import {
   type PictureLibraryImage,
 } from "@/lib/pictureLibrary";
 import { useAuth } from "@/components/AuthProvider";
-import { getStoredToken, loginFromHandoff } from "@/lib/api";
+import { getStoredToken, loginFromHandoff, rewriteInlineMediaUrl } from "@/lib/api";
 
 export type PictureDropdownPickerProps = {
   onInsert: (url: string, filename: string) => void;
@@ -126,7 +126,7 @@ export function PictureDropdownPicker({
   function handleSelectImage(e: ReactMouseEvent, img: PictureLibraryImage) {
     e.preventDefault();
     e.stopPropagation();
-    onInsert(img.url, img.caption || img.filename);
+    onInsert(rewriteInlineMediaUrl(img.url), img.caption || img.filename);
     setLastInsertedId(img.id);
     setTimeout(() => {
       setLastInsertedId(null);
@@ -371,13 +371,16 @@ export function PictureDropdownPicker({
                       }}
                     >
                       <img
-                        src={image.url}
+                        src={rewriteInlineMediaUrl(image.url)}
                         alt={image.caption || image.filename}
                         loading="lazy"
                         style={{
                           width: "100%",
                           height: "100%",
                           objectFit: "contain",
+                        }}
+                        onError={(e) => {
+                          e.currentTarget.style.opacity = "0.25";
                         }}
                       />
                     </div>

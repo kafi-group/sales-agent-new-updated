@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const PRODUCTION_API_BASE = "https://kafi-sales-agent-production.up.railway.app/api";
+const PRODUCTION_API_BASE = "https://sales-agent-new-updated-production.up.railway.app/api";
 
 function apiBase(): string {
   const candidates = [

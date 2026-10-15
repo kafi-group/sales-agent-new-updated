@@ -7,7 +7,7 @@ function apiBase(): string {
   return (
     process.env.KAFI_API_BASE_URL ||
     process.env.NEXT_PUBLIC_KAFI_API_BASE_URL ||
-    "https://kafi-sales-agent-production.up.railway.app/api"
+    "https://sales-agent-new-updated-production.up.railway.app/api"
   )
     .trim()
     .replace(/\/$/, "");

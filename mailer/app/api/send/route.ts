@@ -13,18 +13,13 @@ import { sendSmtp, smtpBodyHasContent } from "@/lib/smtp";
 import { fetchSmtpCredentialsFromSalesAgent } from "@/lib/fetchSmtpCredentials";
 import { appendMailerSentCopy } from "@/lib/syncSent";
 import { resolveAttachmentsForSmtp } from "@/lib/hostAttachments";
+import { getApiBase } from "@/lib/api";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 function apiBase(): string {
-  return (
-    process.env.KAFI_API_BASE_URL ||
-    process.env.NEXT_PUBLIC_KAFI_API_BASE_URL ||
-    ""
-  )
-    .trim()
-    .replace(/\/$/, "");
+  return getApiBase();
 }
 
 async function resolveUsernameFromSession(
@@ -100,29 +95,29 @@ export async function POST(req: NextRequest) {
 
     if (handoffToken) {
       const secret = process.env.MAILER_HANDOFF_SECRET || "";
-      if (!secret) {
-        return NextResponse.json(
-          { error: "MAILER_HANDOFF_SECRET not configured" },
-          { status: 500 },
-        );
+      if (secret) {
+        try {
+          const handoff = await verifyHandoff(handoffToken, secret);
+          username = handoff.username;
+          mailboxEmail = handoff.mailbox_email;
+        } catch {
+          // Expired JWT or Vercel secret drift — fall through to session.
+        }
       }
-      try {
-        const handoff = await verifyHandoff(handoffToken, secret);
-        username = handoff.username;
-        mailboxEmail = handoff.mailbox_email;
-      } catch {
-        return NextResponse.json({ error: "Invalid or expired token" }, { status: 401 });
-      }
-    } else if (authToken) {
+    }
+    if (!username && authToken) {
       const user = await resolveUsernameFromSession(authToken);
-      if (!user) {
-        return NextResponse.json({ error: "Invalid session" }, { status: 401 });
+      if (user) {
+        username = user.username;
+        mailboxEmail = user.mailbox_email || undefined;
       }
-      username = user.username;
-      mailboxEmail = user.mailbox_email || undefined;
-    } else {
+    }
+    if (!username) {
       return NextResponse.json(
-        { error: "auth_token or token required" },
+        {
+          error:
+            "Invalid or expired token. Close this tab and click Send emails again from Sales Agent.",
+        },
         { status: 401 },
       );
     }
@@ -137,13 +132,30 @@ export async function POST(req: NextRequest) {
     const contactName = (body.contact_name || "").trim() || undefined;
     const designation = (body.designation || "").trim() || undefined;
 
-    const mergeLead = await resolveMergeContext(authToken || "", {
-      buyer_id: buyerId,
-      to_email: to,
-      company_name: companyName,
-      contact_name: contactName,
-      designation,
+    // Start mailbox password fetch immediately — overlaps with tracking / images.
+    // Never fall back to Vercel MAILBOX_* (those drift and cause SMTP 535).
+    const smtpCredsPromise = fetchSmtpCredentialsFromSalesAgent({
+      authToken: authToken || undefined,
+      handoffToken: handoffToken || undefined,
     });
+
+    // Bulk UI already personalizes + hosts images; skip extra Railway lead lookups
+    // so each Vercel invocation stays under Hobby's ~10s limit.
+    const mergeLead =
+      sendMode === "bulk"
+        ? {
+            company_name: companyName,
+            contact_name: contactName,
+            contact_email: to,
+            designation,
+          }
+        : await resolveMergeContext(authToken || "", {
+            buyer_id: buyerId,
+            to_email: to,
+            company_name: companyName,
+            contact_name: contactName,
+            designation,
+          });
     const personalizedSubject = personalizeEmailText(subject, mergeLead);
     const mergedBody = personalizeEmailText(text, mergeLead);
     const personalizedBody = ensureDearSalutation(
@@ -174,12 +186,7 @@ export async function POST(req: NextRequest) {
     const sendBody = tracked.body || hostedBody;
     const asHtml = tracked.html !== false;
 
-    // Always load mailbox password from Sales Agent (same as Inbox).
-    // Never fall back to Vercel MAILBOX_* — those drift and cause SMTP 535.
-    const smtpCreds = await fetchSmtpCredentialsFromSalesAgent({
-      authToken: authToken || undefined,
-      handoffToken: handoffToken || undefined,
-    });
+    const smtpCreds = await smtpCredsPromise;
     if (!smtpCreds) {
       return NextResponse.json(
         {
@@ -242,16 +249,20 @@ export async function POST(req: NextRequest) {
     }
 
     // cPanel SMTP does not auto-save to Sent — APPEND via Railway IMAP.
-    const savedToSent = await appendMailerSentCopy({
-      token: handoffToken || undefined,
-      authToken: authToken || undefined,
-      to,
-      cc,
-      bcc,
-      subject,
-      body: text,
-      html: asHtml,
-    });
+    // Skip for bulk: IMAP APPEND often exceeds Vercel Hobby's 10s limit after SMTP.
+    let savedToSent = false;
+    if (sendMode !== "bulk") {
+      savedToSent = await appendMailerSentCopy({
+        token: handoffToken || undefined,
+        authToken: authToken || undefined,
+        to,
+        cc,
+        bcc,
+        subject,
+        body: text,
+        html: asHtml,
+      });
+    }
 
     return NextResponse.json({
       ok: true,

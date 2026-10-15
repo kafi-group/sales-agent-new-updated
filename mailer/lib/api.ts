@@ -12,7 +12,14 @@ export type MailerUser = {
 const TOKEN_KEY = "kafi_mailer_token";
 const USER_KEY = "kafi_mailer_user";
 
-const PRODUCTION_API_BASE = "https://kafi-sales-agent-production.up.railway.app/api";
+export const PRODUCTION_API_BASE =
+  "https://sales-agent-new-updated-production.up.railway.app/api";
+
+const STALE_API_HOSTS = new Set([
+  "kafi-sales-agent.vercel.app",
+  "kafi-sales-agent.up.railway.app",
+  "kafi-sales-agent-production.up.railway.app",
+]);
 
 function normalizeBase(raw: string): string {
   return raw.trim().replace(/\/$/, "");
@@ -22,21 +29,37 @@ function normalizeBase(raw: string): string {
 function isMisconfiguredPublicApiBase(url: string): boolean {
   try {
     const host = new URL(url).hostname.toLowerCase();
-    if (host === "kafi-sales-agent.vercel.app") return true;
+    if (STALE_API_HOSTS.has(host)) return true;
     if (host.endsWith(".vercel.app") && host.includes("mailer")) return true;
-    // Stale Railway hostname (404) — force production fallback.
-    if (host === "kafi-sales-agent.up.railway.app") return true;
   } catch {
     /* ignore */
   }
   return false;
 }
 
+const INLINE_MEDIA_RE = /\/(?:api\/)?mailer\/inline-media\/([^/?#]+)/i;
+
+/** Point library / pasted images at the live Railway host (old URLs 404). */
+export function rewriteInlineMediaUrl(url: string): string {
+  const raw = (url || "").trim();
+  const match = raw.match(INLINE_MEDIA_RE);
+  if (!match) return raw;
+  const base = getApiBase() || PRODUCTION_API_BASE;
+  return `${base}/mailer/inline-media/${match[1]}`;
+}
+
+export function rewriteInlineMediaInHtml(html: string): string {
+  return (html || "").replace(
+    /src\s*=\s*(['"])([^'"]*mailer\/inline-media\/[^'"]+)\1/gi,
+    (_full, quote: string, src: string) => `src=${quote}${rewriteInlineMediaUrl(src)}${quote}`,
+  );
+}
+
 export function getApiBase(): string {
   const pub = normalizeBase(process.env.NEXT_PUBLIC_KAFI_API_BASE_URL || "");
   if (pub && !isMisconfiguredPublicApiBase(pub)) return pub;
   const serverSide = normalizeBase(process.env.KAFI_API_BASE_URL || "");
-  if (serverSide) return serverSide;
+  if (serverSide && !isMisconfiguredPublicApiBase(serverSide)) return serverSide;
   if (process.env.NODE_ENV === "production") return PRODUCTION_API_BASE;
   return "";
 }

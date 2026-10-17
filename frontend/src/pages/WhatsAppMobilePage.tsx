@@ -225,9 +225,17 @@ export function WhatsAppMobilePage({ onError }: WhatsAppMobilePageProps) {
         return;
       }
 
-      // Status only. A finished qrDataUrl on this payload may replace the image.
-      // Never call /qr from the poll, and never clear the image when status has none.
-      const replacement = newerQrPayload(qrRef.current, st);
+      // Status may include qrDataUrl; if still pending, /qr starts or finishes PNG render on bridge.
+      let replacement = newerQrPayload(qrRef.current, st);
+      const stLabel = String(st?.status ?? "").toLowerCase();
+      if (!replacement && !isConnectedStatus(st) && (stLabel === "qr-pending" || stLabel === "connecting")) {
+        try {
+          const qrPayload = await client.getWhatsAppPersonalQr();
+          replacement = newerQrPayload(qrRef.current, qrPayload);
+        } catch {
+          /* bridge still rendering — keep existing QR / spinner */
+        }
+      }
       if (replacement) {
         setQr(replacement);
         qrRef.current = replacement;

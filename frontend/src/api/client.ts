@@ -607,6 +607,7 @@ export interface InboxThreadSummary {
   latest_from_email: string | null;
   latest_from_name: string | null;
   has_attachments: boolean;
+  in_junk?: boolean;
   provider?: string | null;
   triage_category?: string | null;
   triage_label?: string | null;
@@ -3458,6 +3459,23 @@ export const client = {
     const query = search.toString();
     return request<Record<string, unknown>>(`/guidance/helpful${query ? `?${query}` : ""}`);
   },
+  lookupInboxThread: (params: {
+    folder: string;
+    uid: string;
+    message_id?: string | null;
+    subject?: string | null;
+    mailbox_user_id?: number | null;
+  }) => {
+    const search = new URLSearchParams();
+    search.set("folder", params.folder || "INBOX");
+    search.set("uid", params.uid);
+    if (params.message_id) search.set("message_id", params.message_id);
+    if (params.subject) search.set("subject", params.subject);
+    if (params.mailbox_user_id != null && Number.isFinite(params.mailbox_user_id)) {
+      search.set("mailbox_user_id", String(params.mailbox_user_id));
+    }
+    return request<InboxThreadDetail>(`/inbox/threads/lookup?${search.toString()}`);
+  },
   getInboxThread: (threadId: string, mailboxUserId?: number | null) => {
     const qs =
       mailboxUserId != null && Number.isFinite(mailboxUserId)
@@ -3583,7 +3601,7 @@ export const client = {
   getWhatsAppPersonalTeamStatus: () =>
     request<Array<Record<string, unknown>>>("/whatsapp-personal/team-status"),
   getWhatsAppPersonalQr: () =>
-    request<Record<string, unknown>>("/whatsapp-personal/qr", { noRetry: true, timeoutMs: 45_000 }),
+    request<Record<string, unknown>>("/whatsapp-personal/qr", { noRetry: true, timeoutMs: 55_000 }),
   getWhatsAppPersonalSession: () =>
     request<{ session_id: string }>("/whatsapp-personal/session"),
   disconnectWhatsAppPersonal: () =>
@@ -3597,7 +3615,7 @@ export const client = {
     return request<Record<string, unknown>>(`/whatsapp-personal/pair${force}`, {
       method: "POST",
       noRetry: true,
-      timeoutMs: 45_000,
+      timeoutMs: 58_000,
     });
   },
   sendWhatsAppPersonal: (payload: { to_phone: string; message: string }) =>

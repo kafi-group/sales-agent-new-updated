@@ -88,8 +88,9 @@ def _headers() -> dict[str, str]:
 # Keep QR/bridge calls short so a disconnect cannot starve email, Cloud inbox, or leads.
 _STATUS_TIMEOUT = 4.0
 # Bridge waits up to ~28s for a finished PNG. These must outlast that wait.
-_QR_TIMEOUT = 32.0
-_PAIR_TIMEOUT = 38.0
+# Bridge waitForQrOrConnected runs up to 45s — client timeouts must exceed that.
+_QR_TIMEOUT = 52.0
+_PAIR_TIMEOUT = 55.0
 _DISCONNECT_TIMEOUT = 5.0
 _SEND_TIMEOUT = 30.0
 _SEND_DOCUMENT_TIMEOUT = 55.0
@@ -246,7 +247,29 @@ def bridge_status(user_id: int, username: str | None = None) -> dict[str, Any]:
             if not isinstance(data, dict):
                 data = {}
             data.setdefault("session", session)
-            normalized = _normalize_status(data)
+            normalized = publish_qr_fields(_normalize_status(data))
+            pending = str(normalized.get("status") or "").lower() in {"qr-pending", "connecting"}
+            if pending and not _qr_image_url(normalized):
+                try:
+                    qr_resp = client.get(
+                        f"{base_url}/qr",
+                        params={"session": session},
+                        headers=_headers(),
+                        timeout=_QR_TIMEOUT,
+                    )
+                    if qr_resp.status_code == 200:
+                        if _response_is_png(qr_resp):
+                            normalized.update(_png_qr_payload(session, qr_resp.content))
+                        else:
+                            qr_data = qr_resp.json() if qr_resp.content else {}
+                            if isinstance(qr_data, dict):
+                                merged = publish_qr_fields(
+                                    _normalize_status({**qr_data, "session": session})
+                                )
+                                if _qr_image_url(merged):
+                                    normalized.update(merged)
+                except Exception:  # noqa: BLE001
+                    pass
             _store_status_cache(user_id, normalized)
             return normalized
     except httpx.TransportError:
@@ -355,6 +378,7 @@ def bridge_pair(
     """
     session = bridge_session_id(user_id, username=username)
     base_url = _base_url(user_id=user_id, username=username)
+    invalidate_status_cache(user_id)
     try:
         with httpx.Client(timeout=_PAIR_TIMEOUT) as client:
             resp = client.post(
@@ -369,7 +393,9 @@ def bridge_pair(
             )
             resp.raise_for_status()
             if _response_is_png(resp):
-                return _png_qr_payload(session, resp.content)
+                out = _png_qr_payload(session, resp.content)
+                _store_status_cache(user_id, out)
+                return out
             data = resp.json() if resp.content else {}
             if not isinstance(data, dict):
                 data = {"session": session, "connected": False, "qr": None}
@@ -378,7 +404,30 @@ def bridge_pair(
             if isinstance(qr_val, str) and qr_val and not str(qr_val).startswith("data:"):
                 if qr_val.startswith("iVBOR") or qr_val.startswith("/9j"):
                     data["qrDataUrl"] = f"data:image/png;base64,{qr_val}"
-            return publish_qr_fields(_normalize_status(data))
+            out = publish_qr_fields(_normalize_status(data))
+            if not _qr_image_url(out) and not out.get("connected"):
+                try:
+                    qr_resp = client.get(
+                        f"{base_url}/qr",
+                        params={"session": session},
+                        headers=_headers(),
+                        timeout=_QR_TIMEOUT,
+                    )
+                    if qr_resp.status_code == 200:
+                        if _response_is_png(qr_resp):
+                            out.update(_png_qr_payload(session, qr_resp.content))
+                        else:
+                            qr_data = qr_resp.json() if qr_resp.content else {}
+                            if isinstance(qr_data, dict):
+                                merged = publish_qr_fields(
+                                    _normalize_status({**qr_data, "session": session})
+                                )
+                                if _qr_image_url(merged):
+                                    out.update(merged)
+                except Exception:  # noqa: BLE001
+                    pass
+            _store_status_cache(user_id, out)
+            return out
     except Exception as exc:  # noqa: BLE001
         raise _unreachable(base_url) from exc
 

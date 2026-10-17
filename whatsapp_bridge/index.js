@@ -593,19 +593,39 @@ function sessionPayload(sessionId, sessionObj) {
   };
 }
 
-app.get("/status", (req, res) => {
+function sessionNeedsPairStart(sessionObj) {
+  if (!sessionObj) return true;
+  if (sessionObj.shuttingDown) return true;
+  if (isReallyConnected(sessionObj)) return false;
+  if (isLiveSession(sessionObj)) return false;
+  return true;
+}
+
+app.get("/status", async (req, res) => {
   const sessionId = requestSessionId(req);
   if (!sessionId) return res.status(400).json({ error: "Missing session id" });
-  const sessionObj = activeSessions.get(sessionId) || null;
+  let sessionObj = activeSessions.get(sessionId) || null;
+  if (sessionObj && !sessionObj.shuttingDown) {
+    await ensureQrRendered(sessionObj);
+  }
   return res.json(sessionPayload(sessionId, sessionObj));
 });
 
-app.get("/qr", (req, res) => {
+app.get("/qr", async (req, res) => {
   const sessionId = requestSessionId(req);
   if (!sessionId) return res.status(400).json({ error: "Missing session id" });
-  const sessionObj = activeSessions.get(sessionId) || null;
-  if (!sessionObj) return res.json(sessionPayload(sessionId, null));
-  return res.json(sessionPayload(sessionId, sessionObj));
+  let sessionObj = activeSessions.get(sessionId) || null;
+  if (sessionNeedsPairStart(sessionObj)) {
+    try {
+      sessionObj = await initBaileysSession(sessionId, false);
+      sessionObj = await waitForQrOrConnected(sessionId, 20000);
+    } catch (err) {
+      console.error(`[Session ${sessionId}] /qr init failed:`, err?.message || err);
+    }
+  } else if (sessionObj && !sessionObj.shuttingDown) {
+    await ensureQrRendered(sessionObj);
+  }
+  return res.json(sessionPayload(sessionId, sessionObj || null));
 });
 
 app.post("/pair", async (req, res) => {
@@ -621,10 +641,8 @@ app.post("/pair", async (req, res) => {
   );
   try {
     let sessionObj = activeSessions.get(sessionId);
-    if (forceNew) {
-      sessionObj = await initBaileysSession(sessionId, true);
-    } else if (!sessionObj) {
-      sessionObj = await initBaileysSession(sessionId, false);
+    if (forceNew || sessionNeedsPairStart(sessionObj)) {
+      sessionObj = await initBaileysSession(sessionId, forceNew);
     }
     sessionObj = await waitForQrOrConnected(sessionId, 45000);
     return res.json(sessionPayload(sessionId, sessionObj));

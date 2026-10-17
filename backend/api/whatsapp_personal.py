@@ -317,7 +317,7 @@ def reply_personal_conversation(
 
 
 @router.post("/pair")
-def whatsapp_personal_pair(
+async def whatsapp_personal_pair(
     request: Request,
     user: AppUser = Depends(get_current_user_released),
 ) -> Any:
@@ -332,6 +332,13 @@ def whatsapp_personal_pair(
         q = (request.query_params.get("force") or request.query_params.get("forceNew") or "").strip()
         if q in {"1", "true", "yes"}:
             force_new = True
+        if request.headers.get("content-type", "").startswith("application/json"):
+            try:
+                body = await request.json()
+                if isinstance(body, dict) and (body.get("forceNew") or body.get("force") or body.get("fresh")):
+                    force_new = True
+            except Exception:  # noqa: BLE001
+                pass
         return bridge.bridge_pair(user.id, username=user.username, force_new=force_new)
     except RuntimeError as exc:
         raise HTTPException(503, str(exc)) from exc

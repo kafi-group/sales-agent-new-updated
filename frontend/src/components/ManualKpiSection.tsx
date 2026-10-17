@@ -5,10 +5,12 @@ import {
   type ManualKpiEntry,
   type ManualKpiPeriod,
 } from "../api/client";
+import { KpiPeriodDateFilter } from "./KpiPeriodDateFilter";
 import { exportManualKpiReportPdf, manualKpiPeriodLabel } from "../utils/exportManualKpiPdf";
 
 interface ManualKpiSectionProps {
   anchorDate: string;
+  onAnchorDateChange?: (value: string) => void;
   isAdmin: boolean;
   assignees: AppUser[];
   onError: (message: string) => void;
@@ -19,7 +21,7 @@ const MANUAL_PERIOD_OPTIONS: { value: ManualKpiPeriod; label: string }[] = [
   { value: "week", label: "Weekly" },
   { value: "month", label: "Monthly" },
   { value: "year", label: "Yearly" },
-  { value: "custom", label: "Custom" },
+  { value: "custom", label: "Custom date" },
 ];
 
 function todayInKarachi(): string {
@@ -44,6 +46,7 @@ function formatRange(start: string, end: string, period: string): string {
 
 export function ManualKpiSection({
   anchorDate,
+  onAnchorDateChange,
   isAdmin,
   assignees,
   onError,
@@ -234,6 +237,15 @@ export function ManualKpiSection({
     setPeriod(next);
   }
 
+  const manualAnchorLabel =
+    period === "week"
+      ? "Any day in week"
+      : period === "month"
+        ? "Any day in month"
+        : period === "year"
+          ? "Any day in year"
+          : "Activity date";
+
   const manualScopeLabel =
     isAdmin && userFilter
       ? assignees.find((u) => String(u.id) === userFilter)?.full_name ||
@@ -274,44 +286,28 @@ export function ManualKpiSection({
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
-          <label className="block text-xs text-slate-400">
-            View
-            <select
-              value={period}
-              onChange={(e) => onPeriodChange(e.target.value as ManualKpiPeriod)}
-              className="mt-1 block rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-2 text-sm text-slate-100"
-            >
-              {MANUAL_PERIOD_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          {period === "custom" && (
-            <>
-              <label className="block text-xs text-slate-400">
-                From
-                <input
-                  type="date"
-                  value={customDateFrom}
-                  max={customDateTo}
-                  onChange={(e) => setCustomDateFrom(e.target.value)}
-                  className="mt-1 block rounded-lg border border-violet-700/60 bg-slate-900 px-2.5 py-2 text-sm text-slate-100"
-                />
-              </label>
-              <label className="block text-xs text-slate-400">
-                To
-                <input
-                  type="date"
-                  value={customDateTo}
-                  min={customDateFrom}
-                  onChange={(e) => setCustomDateTo(e.target.value)}
-                  className="mt-1 block rounded-lg border border-violet-700/60 bg-slate-900 px-2.5 py-2 text-sm text-slate-100"
-                />
-              </label>
-            </>
-          )}
+          <div className="min-w-[min(100%,14rem)] max-w-md">
+            <p className="text-xs text-slate-500 mb-1.5">Manual KPI period</p>
+            <KpiPeriodDateFilter
+              period={period}
+              onPeriodChange={onPeriodChange}
+              options={MANUAL_PERIOD_OPTIONS}
+              customPeriodValue="custom"
+              anchorDate={anchorDate}
+              onAnchorDateChange={onAnchorDateChange}
+              anchorDateLabel={manualAnchorLabel}
+              customDateFrom={customDateFrom}
+              customDateTo={customDateTo}
+              onCustomDateFromChange={setCustomDateFrom}
+              onCustomDateToChange={setCustomDateTo}
+              onPickCustom={() => {
+                const today = todayInKarachi();
+                setCustomDateFrom(startOfMonthKarachi(today));
+                setCustomDateTo(today);
+              }}
+              accent="violet"
+            />
+          </div>
           {isAdmin && (
             <label className="block text-xs text-slate-400">
               User

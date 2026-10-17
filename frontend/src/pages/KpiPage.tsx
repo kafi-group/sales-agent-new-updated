@@ -11,6 +11,7 @@ import { useAuth } from "../auth/AuthContext";
 import { ManualKpiSection } from "../components/ManualKpiSection";
 import { ColumnVisibilityMenu } from "../components/ColumnVisibilityMenu";
 import { KpiDrillDownModal } from "../components/KpiDrillDownModal";
+import { KpiPeriodDateFilter } from "../components/KpiPeriodDateFilter";
 import { KpiScorecard, scorecardToText } from "../components/KpiScorecard";
 import {
   useColumnVisibility,
@@ -54,7 +55,7 @@ const PERIOD_OPTIONS: { value: KpiPeriod; label: string }[] = [
   { value: "day", label: "Daily" },
   { value: "week", label: "Weekly" },
   { value: "month", label: "Monthly" },
-  { value: "custom", label: "Custom" },
+  { value: "custom", label: "Custom date" },
 ];
 
 const COUNT_CARDS: { key: keyof KpiCounts; label: string }[] = [
@@ -204,7 +205,7 @@ export function KpiPage({ onError }: KpiPageProps) {
       : period === "month"
         ? "Monthly"
         : period === "custom"
-          ? "Custom"
+          ? `${customDateFrom} → ${customDateTo}`
           : "Daily";
 
   const dateInputLabel =
@@ -225,54 +226,28 @@ export function KpiPage({ onError }: KpiPageProps) {
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-3">
-          <label className="block text-xs text-slate-400">
-            Period
-            <select
-              value={period}
-              onChange={(e) => setPeriod(e.target.value as KpiPeriod)}
-              className="mt-1 block rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
-            >
-              {PERIOD_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          {period === "custom" ? (
-            <>
-              <label className="block text-xs text-slate-400">
-                From
-                <input
-                  type="date"
-                  value={customDateFrom}
-                  max={customDateTo}
-                  onChange={(e) => setCustomDateFrom(e.target.value)}
-                  className="mt-1 block rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
-                />
-              </label>
-              <label className="block text-xs text-slate-400">
-                To
-                <input
-                  type="date"
-                  value={customDateTo}
-                  min={customDateFrom}
-                  onChange={(e) => setCustomDateTo(e.target.value)}
-                  className="mt-1 block rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
-                />
-              </label>
-            </>
-          ) : (
-            <label className="block text-xs text-slate-400">
-              {dateInputLabel}
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="mt-1 block rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
-              />
-            </label>
-          )}
+          <div className="min-w-[min(100%,14rem)] max-w-md">
+            <p className="text-xs text-slate-500 mb-1.5">Automatic KPI period</p>
+            <KpiPeriodDateFilter
+              period={period}
+              onPeriodChange={setPeriod}
+              options={PERIOD_OPTIONS}
+              customPeriodValue="custom"
+              anchorDate={date}
+              onAnchorDateChange={setDate}
+              anchorDateLabel={dateInputLabel}
+              customDateFrom={customDateFrom}
+              customDateTo={customDateTo}
+              onCustomDateFromChange={setCustomDateFrom}
+              onCustomDateToChange={setCustomDateTo}
+              onPickCustom={() => {
+                const today = todayInKarachi();
+                setCustomDateFrom(startOfMonthKarachi(today));
+                setCustomDateTo(today);
+              }}
+              accent="emerald"
+            />
+          </div>
           {isAdmin && (
             <label className="block text-xs text-slate-400">
               User
@@ -510,6 +485,7 @@ export function KpiPage({ onError }: KpiPageProps) {
 
       <ManualKpiSection
         anchorDate={date}
+        onAnchorDateChange={setDate}
         isAdmin={isAdmin}
         assignees={assignees}
         onError={onError}

@@ -93,10 +93,12 @@ _NO_CONNECT_STATUSES = {
 }
 
 
-def normalize_e164(phone: str | None) -> str | None:
+def normalize_e164(phone: str | None, country_hint: str | None = None) -> str | None:
     """Normalize a phone string to E.164 (+country + number).
 
-    Handles common Pakistan local mobiles (03XXXXXXXXX / 3XXXXXXXXX → +923…).
+    Handles common Pakistan local mobiles (03XXXXXXXXX / 3XXXXXXXXX → +923…),
+    Gulf/UK national formats when ``country_hint`` is set (e.g. UAE 050… → +97150…),
+    and fixes naive ``+050…`` values that Meta cannot deliver to.
     """
     if not phone:
         return None
@@ -120,14 +122,133 @@ def normalize_e164(phone: str | None) -> str | None:
         elif re.fullmatch(r"92\d{10}", bare):
             cleaned = f"+{bare}"
         else:
-            cleaned = f"+{bare}"
+            fixed = _national_digits_to_e164(bare, country_hint=country_hint)
+            cleaned = fixed if fixed else f"+{bare}"
     elif cleaned.startswith("+0") and re.fullmatch(r"\+03\d{9}", cleaned):
         # Accidental +0307… from naive prefixing
         cleaned = f"+92{cleaned[2:]}"
 
+    # +0501234567-style mistakes (local Gulf mobile with a bare "+" prefix).
+    if re.fullmatch(r"\+0\d{8,14}", cleaned):
+        national = cleaned[2:]
+        fixed = _national_digits_to_e164(national, country_hint=country_hint)
+        if fixed:
+            cleaned = fixed
+
     if re.fullmatch(r"\+\d{8,15}", cleaned):
         return cleaned
+
+    # National format without country code — use buyer/country hint.
+    if bare and not bare.startswith("92"):
+        fixed = _national_digits_to_e164(bare, country_hint=country_hint)
+        if fixed and re.fullmatch(r"\+\d{8,15}", fixed):
+            return fixed
     return None
+
+
+def _national_digits_to_e164(
+    digits: str,
+    *,
+    country_hint: str | None = None,
+) -> str | None:
+    """Convert national or partial digits to E.164 using country heuristics."""
+    from modules.countries import country_dial_prefix, country_from_phone
+
+    d = re.sub(r"\D", "", digits or "")
+    if not d:
+        return None
+
+    prefixes_to_try: list[str] = []
+    if country_hint:
+        p = country_dial_prefix(country_hint)
+        if p:
+            prefixes_to_try.append(p)
+    inferred = country_from_phone(d)
+    if inferred:
+        p = country_dial_prefix(inferred)
+        if p and p not in prefixes_to_try:
+            prefixes_to_try.append(p)
+    # Common mis-normalized Gulf mobile without country code.
+    if d.startswith("5") and len(d) == 9 and "971" not in prefixes_to_try:
+        prefixes_to_try.append("971")
+
+    if d.startswith("0"):
+        national = d[1:]
+    else:
+        national = d
+
+    for prefix in prefixes_to_try:
+        if national.startswith(prefix):
+            candidate = f"+{national}"
+        else:
+            candidate = f"+{prefix}{national}"
+        if re.fullmatch(r"\+\d{8,15}", candidate):
+            return candidate
+    return None
+
+
+def resolve_whatsapp_send_phone(
+    *,
+    force_phone: str | None = None,
+    wa_id: str | None = None,
+    phone: str | None = None,
+    primary_phone: str | None = None,
+    secondary_mobile: str | None = None,
+    secondary_phone: str | None = None,
+    country_hint: str | None = None,
+) -> str | None:
+    """Pick the best E.164 recipient for Meta Cloud WhatsApp.
+
+    Skips known landlines, prefers mobiles, and honors ``force_phone`` (UI-selected
+    number) with country-aware normalization.
+    """
+    from modules.personalized_followups import _classify_phone_type
+
+    def _norm(raw: str | None) -> str | None:
+        if not raw or not str(raw).strip():
+            return None
+        text = str(raw).strip()
+        normalized = normalize_e164(text, country_hint)
+        if normalized:
+            return normalized
+        digits = "".join(ch for ch in text if ch.isdigit())
+        if digits:
+            return normalize_e164(digits, country_hint) or _national_digits_to_e164(
+                digits, country_hint=country_hint
+            )
+        return None
+
+    if force_phone and str(force_phone).strip():
+        return _norm(force_phone)
+
+    candidates: list[tuple[int, str, str]] = []
+    for priority, raw, label in (
+        (0, wa_id, "whatsapp"),
+        (1, secondary_mobile, "mobile"),
+        (2, phone, "mobile"),
+        (3, primary_phone, "office"),
+        (4, secondary_phone, "phone"),
+    ):
+        if not raw:
+            continue
+        normalized = _norm(raw)
+        if not normalized:
+            continue
+        _ptype, is_landline, wa_supported = _classify_phone_type(normalized, label)
+        if is_landline and not wa_supported:
+            continue
+        candidates.append((priority, normalized, label))
+
+    if not candidates:
+        # Last resort — send to whatever normalizes (Meta may still reject landlines).
+        for raw in (wa_id, secondary_mobile, phone, primary_phone, secondary_phone):
+            normalized = _norm(raw)
+            if normalized:
+                return normalized
+        return None
+
+    candidates.sort(key=lambda row: row[0])
+    return candidates[0][1]
 
 
 def mask_phone(phone: str | None) -> str | None:

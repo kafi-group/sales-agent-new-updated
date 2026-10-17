@@ -293,21 +293,36 @@ def primary_contact_with_email(db: Session, buyer_id: int) -> Contact | None:
 
 
 def primary_contact_with_phone(db: Session, buyer_id: int) -> Contact | None:
-    from integrations.voice_client import normalize_e164
+    from integrations.voice_client import normalize_e164, resolve_whatsapp_send_phone
 
+    buyer = db.get(Buyer, buyer_id)
+    country = buyer.country if buyer else None
+
+    best: Contact | None = None
     for contact in list_contacts_for_buyer(db, buyer_id):
-        if normalize_e164(contact.phone):
-            return contact
+        if resolve_whatsapp_send_phone(
+            wa_id=contact.wa_id,
+            phone=contact.phone,
+            primary_phone=contact.primary_phone,
+            secondary_mobile=contact.secondary_mobile,
+            secondary_phone=contact.secondary_phone,
+            country_hint=country,
+        ):
+            if best is None:
+                best = contact
+            elif contact.is_primary and not best.is_primary:
+                best = contact
+    if best:
+        return best
 
     # Fallback to buyer's direct phone fields if contact table row doesn't exist
-    buyer = db.get(Buyer, buyer_id)
     if buyer:
         for ph in (
             getattr(buyer, "primary_mobile", None),
             getattr(buyer, "phone", None),
             getattr(buyer, "secondary_phone", None),
         ):
-            norm = normalize_e164(ph)
+            norm = normalize_e164(ph, country)
             if norm:
                 new_contact = Contact(
                     buyer_id=buyer.id,

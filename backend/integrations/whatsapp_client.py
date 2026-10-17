@@ -99,10 +99,16 @@ class WhatsAppClient:
                     ),
                     "raw": body,
                 }
+            recipient_wa_id = None
+            for item in body.get("contacts") or []:
+                if isinstance(item, dict) and item.get("wa_id"):
+                    recipient_wa_id = str(item["wa_id"]).strip()
+                    break
             return {
                 "status": "sent",
                 "message": "Message accepted by WhatsApp Cloud API (delivery status updates via webhook)",
                 "provider_message_id": message_id,
+                "recipient_wa_id": recipient_wa_id,
                 "raw": body,
             }
 
@@ -171,6 +177,9 @@ class WhatsAppClient:
                 "and WHATSAPP_PHONE_NUMBER_ID in backend/.env",
             }
         to = normalize_e164(phone)
+        if not to:
+            digits = "".join(ch for ch in (phone or "") if ch.isdigit())
+            to = normalize_e164(digits) or (f"+{digits}" if digits else None)
         if not to:
             return {"status": "error", "message": f"Invalid WhatsApp number: {phone!r}"}
 

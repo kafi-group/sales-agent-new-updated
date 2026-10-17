@@ -1378,36 +1378,19 @@ class CommsGenerator:
 
         contact = db.get(Contact, draft.contact_id)
         buyer = db.get(Buyer, contact.buyer_id) if contact else None
+        from integrations.voice_client import resolve_whatsapp_send_phone
+
         phone = None
-        if force_phone and str(force_phone).strip():
-            from integrations.voice_client import normalize_e164
-
-            phone = normalize_e164(str(force_phone).strip())
-            if not phone:
-                digits = "".join(ch for ch in str(force_phone) if ch.isdigit())
-                if digits:
-                    phone = f"+{digits}"
-        if not phone and contact:
-            from integrations.voice_client import normalize_e164
-
-            # Prefer Meta wa_id — contact.phone is often a landline / display number
-            # that Graph accepts but never delivers on WhatsApp.
-            raw_candidates = [
-                contact.wa_id,
-                contact.primary_phone,
-                contact.secondary_mobile,
-                contact.phone,
-            ]
-            for raw in raw_candidates:
-                if not raw or not str(raw).strip():
-                    continue
-                phone = normalize_e164(str(raw).strip())
-                if phone:
-                    break
-                digits = "".join(ch for ch in str(raw) if ch.isdigit())
-                if digits:
-                    phone = f"+{digits}"
-                    break
+        if contact:
+            phone = resolve_whatsapp_send_phone(
+                force_phone=force_phone,
+                wa_id=contact.wa_id,
+                phone=contact.phone,
+                primary_phone=contact.primary_phone,
+                secondary_mobile=contact.secondary_mobile,
+                secondary_phone=contact.secondary_phone,
+                country_hint=(buyer.country if buyer else None),
+            )
 
         if not contact or not phone:
             draft.status = InteractionStatus.draft
@@ -1508,6 +1491,11 @@ class CommsGenerator:
             draft.provider_message_id = send_result.get("provider_message_id")
             draft.template_name = template_name or draft.template_name
             draft.wa_status = "sent"
+            recipient_wa_id = (send_result.get("recipient_wa_id") or "").strip()
+            if recipient_wa_id and contact:
+                digits = "".join(ch for ch in recipient_wa_id if ch.isdigit())
+                if digits:
+                    contact.wa_id = digits
             db.commit()
             db.refresh(draft)
             # Billing / eligibility failures arrive via webhook after Graph "accepted".

@@ -351,6 +351,18 @@ def resolve_country_name(value: str | None) -> str | None:
     return None
 
 
+def country_dial_prefix(country: str | None) -> str | None:
+    """International dialing prefix digits without ``+`` (e.g. UAE → ``971``)."""
+    name = resolve_country_name(country)
+    if not name:
+        return None
+    key = name.lower()
+    for prefix, cname in _PHONE_COUNTRY_PREFIXES:
+        if cname.lower() == key:
+            return prefix
+    return None
+
+
 def country_from_phone(phone: str | None) -> str | None:
     """Infer country from international dialing prefix."""
     if not phone:

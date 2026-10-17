@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import re
 import threading
-import time
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -196,14 +195,8 @@ def _interaction_read(db: Session, interaction) -> InteractionRead:
 
 @router.get("/status")
 def whatsapp_personal_status(user: AppUser = Depends(get_current_user_released)) -> Any:
-    try:
-        return bridge.bridge_status(user.id, username=user.username)
-    except Exception:  # noqa: BLE001
-        return {
-            "connected": False,
-            "status": "disconnected",
-            "session": bridge.bridge_session_id(user.id, username=user.username),
-        }
+    # bridge_status already returns the last good snapshot or "unreachable".
+    return bridge.bridge_status(user.id, username=user.username)
 
 
 @router.get("/qr")
@@ -339,25 +332,7 @@ def whatsapp_personal_pair(
         q = (request.query_params.get("force") or request.query_params.get("forceNew") or "").strip()
         if q in {"1", "true", "yes"}:
             force_new = True
-        def _pair_ready(result: dict) -> bool:
-            if result.get("connected"):
-                return True
-            url = result.get("qrDataUrl")
-            return isinstance(url, str) and url.startswith("data:image/")
-
-        last_result = bridge.bridge_pair(
-            user.id, username=user.username, force_new=force_new
-        )
-        if _pair_ready(last_result):
-            return last_result
-        # Bridge already waited for the PNG. A short follow-up covers a late render.
-        deadline = time.monotonic() + 8.0
-        while time.monotonic() < deadline:
-            time.sleep(1.0)
-            last_result = bridge.bridge_qr(user.id, username=user.username)
-            if _pair_ready(last_result):
-                return last_result
-        return last_result
+        return bridge.bridge_pair(user.id, username=user.username, force_new=force_new)
     except RuntimeError as exc:
         raise HTTPException(503, str(exc)) from exc
     except Exception as exc:  # noqa: BLE001

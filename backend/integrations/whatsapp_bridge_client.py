@@ -60,12 +60,21 @@ def bridge_owner_key(username: str | None, user_id: int | None = None) -> str | 
 
 
 def bridge_session_id(user_id: int, username: str | None = None) -> str:
-    """Namespace sessions so each user's bridge container has a clean session."""
-    prefix = (settings.whatsapp_bridge_session_prefix or "kafi-sales-agent").strip()
+    """Namespace sessions so each user's bridge container has a clean session.
+
+    Username keeps ``kafi-sales-agent-<username>``. With no username the id is
+    ``kafi-sales-agent-u<id>``. Never returns an empty session.
+    """
+    prefix = (settings.whatsapp_bridge_session_prefix or "kafi-sales-agent").strip() or "kafi-sales-agent"
     clean_name = (username or "").strip().lower()
     if clean_name:
-        return f"{prefix}-{clean_name}"
-    return f"{prefix}-u{int(user_id)}"
+        session = f"{prefix}-{clean_name}"
+    else:
+        session = f"{prefix}-u{int(user_id)}"
+    session = session.strip()
+    if not session:
+        return f"kafi-sales-agent-u{int(user_id)}"
+    return session
 
 
 def _headers() -> dict[str, str]:
@@ -97,8 +106,9 @@ def _first_url(*candidates: str | None) -> str:
 def _base_url(user_id: int | None = None, username: str | None = None) -> str:
     """Resolve the WhatsApp bridge for this Sales Agent login.
 
-    Per-user URLs win when set. Otherwise WHATSAPP_BRIDGE_URL (local or a
-    single Railway service) is used so dead hardcoded defaults cannot block QR.
+    Khalid, Asim, Usman, and Sadia use their per-user URL, then the hardcoded
+    dedicated host. WHATSAPP_BRIDGE_URL is only for a login with no dedicated
+    bridge. Unknown users never fall through to Khalid's host.
     """
     owner = bridge_owner_key(username, user_id)
     clean_name = (username or "").strip().lower()
@@ -106,23 +116,23 @@ def _base_url(user_id: int | None = None, username: str | None = None) -> str:
 
     if owner == "khalid":
         custom = _first_url(settings.whatsapp_bridge_url_khalid, settings.whatsapp_bridge_url_admin)
-        return custom or general or DEFAULT_USER_BRIDGES["khalid"]
+        return custom or DEFAULT_USER_BRIDGES["khalid"]
     if owner == "asim":
         custom = _first_url(settings.whatsapp_bridge_url_asim)
-        return custom or general or DEFAULT_USER_BRIDGES["asim"]
+        return custom or DEFAULT_USER_BRIDGES["asim"]
     if owner == "usman":
         custom = _first_url(settings.whatsapp_bridge_url_usman)
-        return custom or general or DEFAULT_USER_BRIDGES["usman"]
+        return custom or DEFAULT_USER_BRIDGES["usman"]
     if owner == "sadia":
         custom = _first_url(settings.whatsapp_bridge_url_sadia)
-        return custom or general or DEFAULT_USER_BRIDGES["sadia"]
+        return custom or DEFAULT_USER_BRIDGES["sadia"]
 
     if clean_name and clean_name in DEFAULT_USER_BRIDGES:
-        return general or DEFAULT_USER_BRIDGES[clean_name]
+        return DEFAULT_USER_BRIDGES[clean_name]
     if user_id is not None and user_id in DEFAULT_USER_ID_BRIDGES:
-        return general or DEFAULT_USER_ID_BRIDGES[user_id]
+        return DEFAULT_USER_ID_BRIDGES[user_id]
 
-    return general or DEFAULT_USER_BRIDGES["khalid"]
+    return general
 
 
 def _extract_phone_number(data: dict[str, Any]) -> str | None:
@@ -207,9 +217,21 @@ def _response_is_png(resp: httpx.Response) -> bool:
     return len(body) >= 4 and body[:4] == b"\x89PNG"
 
 
+def _status_when_bridge_unreachable(user_id: int, session: str) -> dict[str, Any]:
+    """Last good snapshot, or unreachable. Never written back into the cache."""
+    cached = last_cached_status(user_id)
+    if cached is not None:
+        return cached
+    return {"connected": False, "session": session, "status": "unreachable"}
+
+
 def bridge_status(user_id: int, username: str | None = None) -> dict[str, Any]:
-    session = bridge_session_id(user_id, username=username)
+    session = bridge_session_id(user_id, username=username).strip()
+    if not session:
+        return {"connected": False, "session": "", "status": "unreachable"}
     base_url = _base_url(user_id=user_id, username=username)
+    if not base_url:
+        return _status_when_bridge_unreachable(user_id, session)
     try:
         with httpx.Client(timeout=_STATUS_TIMEOUT) as client:
             resp = client.get(
@@ -227,10 +249,11 @@ def bridge_status(user_id: int, username: str | None = None) -> dict[str, Any]:
             normalized = _normalize_status(data)
             _store_status_cache(user_id, normalized)
             return normalized
+    except httpx.TransportError:
+        # Timeout and network failures must not paint the last good link as logged out.
+        return _status_when_bridge_unreachable(user_id, session)
     except Exception:  # noqa: BLE001
-        disconnected = {"connected": False, "session": session, "status": "disconnected"}
-        _store_status_cache(user_id, disconnected)
-        return disconnected
+        return {"connected": False, "session": session, "status": "disconnected"}
 
 
 def _store_status_cache(user_id: int, data: dict[str, Any]) -> None:
@@ -247,6 +270,15 @@ def peek_cached_status(user_id: int) -> dict[str, Any] | None:
         if (time.monotonic() - ts) > _STATUS_CACHE_TTL:
             return None
         return data
+
+
+def last_cached_status(user_id: int) -> dict[str, Any] | None:
+    """Last stored status snapshot for this user, even after the TTL has passed."""
+    with _status_cache_lock:
+        hit = _status_cache.get(int(user_id))
+        if not hit:
+            return None
+        return dict(hit[1])
 
 
 def invalidate_status_cache(user_id: int | None = None) -> None:
@@ -352,25 +384,19 @@ def bridge_pair(
 
 
 def bridge_disconnect(user_id: int, username: str | None = None) -> dict[str, Any]:
-    session = bridge_session_id(user_id, username=username)
+    """Disconnect this session once. /logout would stop the same session again."""
+    session = bridge_session_id(user_id, username=username).strip()
     base_url = _base_url(user_id=user_id, username=username)
-    try:
-        with httpx.Client(timeout=_DISCONNECT_TIMEOUT) as client:
-            client.post(
-                f"{base_url}/disconnect",
-                json={"session": session, "sessionId": session},
-                headers=_headers(),
-            )
-            try:
+    if session and base_url:
+        try:
+            with httpx.Client(timeout=_DISCONNECT_TIMEOUT) as client:
                 client.post(
-                    f"{base_url}/logout",
+                    f"{base_url}/disconnect",
                     json={"session": session, "sessionId": session},
                     headers=_headers(),
                 )
-            except Exception:  # noqa: BLE001
-                pass
-    except Exception:  # noqa: BLE001
-        pass
+        except Exception:  # noqa: BLE001
+            pass
     disconnected = {"ok": True, "session": session, "connected": False, "status": "disconnected"}
     invalidate_status_cache(user_id)
     return disconnected

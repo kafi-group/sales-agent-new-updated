@@ -74,14 +74,13 @@ function attachSocketWatch(sock, sessionObj, sessionId) {
   const ws = sock?.ws;
   if (!ws || ws.__kafiWatchAttached) return;
   ws.__kafiWatchAttached = true;
-  const onDead = (evt) => {
-    if (sessionObj.shuttingDown) return;
-    markSessionDisconnected(sessionObj, `websocket ${evt || "close"}`);
-    console.log(`[Session ${sessionId}] WebSocket ended without a clean WhatsApp logout event`);
-  };
   try {
-    ws.on?.("close", () => onDead("close"));
-    ws.on?.("error", () => onDead("error"));
+    // A raw websocket error is not a logout and must not drop creds or other sessions.
+    // connection.update is the only path that reconnects or deletes this session.
+    ws.on?.("error", () => {
+      if (sessionObj?.shuttingDown) return;
+      console.log(`[Session ${sessionId}] WebSocket error ignored; connection.update owns reconnects`);
+    });
   } catch {
     // Some Baileys builds expose a raw browser-style socket.
   }
@@ -103,6 +102,16 @@ function qrImageIsComplete(sessionObj) {
   const url = sessionObj.qrDataUrl;
   if (typeof url !== "string" || !url.startsWith("data:image/") || url.length < 80) return false;
   return Boolean(sessionObj.qr && sessionObj.qrRenderedFor === sessionObj.qr);
+}
+
+function servableQrDataUrl(sessionObj) {
+  if (!sessionObj || isReallyConnected(sessionObj)) return null;
+  const url = sessionObj.qrDataUrl;
+  if (typeof url !== "string" || !url.startsWith("data:image/") || url.length < 80) return null;
+  // Set only after QRCode.toDataURL resolves, so callers never receive a half-rendered image.
+  // While the next pairing string is still rendering, this remains the previous finished PNG.
+  if (!sessionObj.qrRenderedFor) return null;
+  return url;
 }
 
 async function renderQrDataUrl(qr) {
@@ -129,16 +138,23 @@ async function ensureQrRendered(sessionObj) {
   return sessionObj;
 }
 
-async function waitForQrOrConnected(sessionObj, timeoutMs = 28000) {
+async function waitForQrOrConnected(sessionId, timeoutMs = 45000) {
   const started = Date.now();
-  while (sessionObj && Date.now() - started < timeoutMs) {
-    if (sessionObj.shuttingDown) break;
-    await ensureQrRendered(sessionObj);
-    // Wait for the finished PNG. The raw pairing string arrives first and is not an image.
-    if (isReallyConnected(sessionObj) || qrImageIsComplete(sessionObj)) return sessionObj;
+  let sessionObj = activeSessions.get(sessionId) || null;
+  while (Date.now() - started < timeoutMs) {
+    const current = activeSessions.get(sessionId);
+    if (current) sessionObj = current;
+    if (!sessionObj) break;
+    if (!sessionObj.shuttingDown) {
+      await ensureQrRendered(sessionObj);
+      // Wait for the finished PNG. The raw pairing string arrives first and is not an image.
+      if (isReallyConnected(sessionObj) || qrImageIsComplete(sessionObj)) return sessionObj;
+    }
     await sleep(250);
   }
-  await ensureQrRendered(sessionObj);
+  const current = activeSessions.get(sessionId);
+  if (current) sessionObj = current;
+  if (sessionObj && !sessionObj.shuttingDown) await ensureQrRendered(sessionObj);
   return sessionObj;
 }
 
@@ -213,8 +229,23 @@ app.use((req, res, next) => {
   next();
 });
 
+function sanitizeSessionId(sessionId) {
+  return String(sessionId || "").trim().replace(/[^a-zA-Z0-9_-]/g, "_");
+}
+
+function requestSessionId(req) {
+  const candidates = [req.body?.session, req.body?.sessionId, req.query?.session, req.query?.sessionId];
+  for (const value of candidates) {
+    if (value == null) continue;
+    const id = String(value).trim();
+    if (id) return id;
+  }
+  return "";
+}
+
 function getSessionDir(sessionId) {
-  const safeId = String(sessionId || "default").replace(/[^a-zA-Z0-9_-]/g, "_");
+  const safeId = sanitizeSessionId(sessionId);
+  if (!safeId) throw new Error("Session ID is required");
   const dir = path.join(SESSIONS_DIR, safeId);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
@@ -223,12 +254,49 @@ function getSessionDir(sessionId) {
 }
 
 function hasSavedCreds(sessionId) {
-  const safeId = String(sessionId || "default").replace(/[^a-zA-Z0-9_-]/g, "_");
+  const safeId = sanitizeSessionId(sessionId);
+  if (!safeId) return false;
   return fs.existsSync(path.join(SESSIONS_DIR, safeId, "creds.json"));
 }
 
+function isRealLogout(statusCode, lastDisconnect) {
+  const code = Number(statusCode);
+  const loggedOutCode = Number(DisconnectReason.loggedOut);
+  if (code === loggedOutCode || code === 401) return true;
+  const blob = [
+    lastDisconnect?.error?.message,
+    lastDisconnect?.error?.data?.reason,
+    lastDisconnect?.error?.data?.type,
+    lastDisconnect?.error?.output?.payload?.message,
+    lastDisconnect?.error?.output?.payload?.error,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return blob.includes("device_removed") || blob.includes("device removed");
+}
+
+function shouldReconnectStatus(statusCode) {
+  const code = Number(statusCode);
+  if (!Number.isFinite(code)) return false;
+  const codes = new Set([
+    515,
+    428,
+    408,
+    440,
+    500,
+    Number(DisconnectReason.restartRequired),
+    Number(DisconnectReason.connectionClosed),
+    Number(DisconnectReason.connectionLost),
+    Number(DisconnectReason.timedOut),
+    Number(DisconnectReason.connectionReplaced),
+    Number(DisconnectReason.badSession),
+  ]);
+  return codes.has(code);
+}
+
 async function initBaileysSession(sessionId, forceNew = false) {
-  const safeSessionId = String(sessionId || "default").trim();
+  const safeSessionId = String(sessionId || "").trim();
   if (!safeSessionId) throw new Error("Session ID is required");
 
   while (initLocks.has(safeSessionId)) {
@@ -320,21 +388,23 @@ async function initBaileysSession(sessionId, forceNew = false) {
       if (sessionObj.shuttingDown) return;
 
       if (qr) {
-        sessionObj.qr = qr;
         sessionObj.status = "qr-pending";
         sessionObj.connected = false;
-        // Drop any previous picture so callers cannot return a half-old code.
-        sessionObj.qrRenderedFor = null;
-        console.log(`[Session ${safeSessionId}] QR received from WhatsApp, rendering image`);
-        try {
-          const dataUrl = await renderQrDataUrl(qr);
-          if (sessionObj.qr === qr && !sessionObj.shuttingDown) {
-            sessionObj.qrDataUrl = dataUrl;
-            sessionObj.qrRenderedFor = qr;
-            console.log(`[Session ${safeSessionId}] QR image ready (${dataUrl.length} chars)`);
+        if (sessionObj.qr !== qr) {
+          sessionObj.qr = qr;
+          // Keep qrDataUrl / qrRenderedFor until the new PNG is finished.
+          console.log(`[Session ${safeSessionId}] QR received from WhatsApp, rendering image`);
+          const rendering = qr;
+          try {
+            const dataUrl = await renderQrDataUrl(rendering);
+            if (sessionObj.qr === rendering && !sessionObj.shuttingDown) {
+              sessionObj.qrDataUrl = dataUrl;
+              sessionObj.qrRenderedFor = rendering;
+              console.log(`[Session ${safeSessionId}] QR image ready (${dataUrl.length} chars)`);
+            }
+          } catch (err) {
+            console.error(`[Session ${safeSessionId}] Error generating QR data URL:`, err);
           }
-        } catch (err) {
-          console.error(`[Session ${safeSessionId}] Error generating QR data URL:`, err);
         }
       }
 
@@ -363,12 +433,13 @@ async function initBaileysSession(sessionId, forceNew = false) {
       if (connection === "close") {
         sessionObj.connected = false;
         const statusCode = lastDisconnect?.error?.output?.statusCode;
-        const loggedOut = statusCode === DisconnectReason.loggedOut || statusCode === 401;
-        const restartRequired = statusCode === DisconnectReason.restartRequired || statusCode === 515;
+        const loggedOut = isRealLogout(statusCode, lastDisconnect);
+        const restartRequired = Number(statusCode) === 515 || Number(statusCode) === Number(DisconnectReason.restartRequired);
+        const reconnect = !loggedOut && shouldReconnectStatus(statusCode);
         sessionObj.status = "disconnected";
 
         console.log(
-          `[Session ${safeSessionId}] Closed. Reason: ${statusCode}, reconnecting: ${!loggedOut && !sessionObj.shuttingDown}`
+          `[Session ${safeSessionId}] Closed. Reason: ${statusCode}, reconnecting: ${reconnect && !sessionObj.shuttingDown}`
         );
 
         if (sessionObj.shuttingDown) {
@@ -390,11 +461,15 @@ async function initBaileysSession(sessionId, forceNew = false) {
           return;
         }
 
+        if (!reconnect) return;
+
         // 515 after QR scan is normal: WhatsApp requires a fresh socket with saved creds.
+        // Reconnect this session only. Do not delete its files or touch other map entries.
         const delay = restartRequired ? 800 : 2500;
         setTimeout(() => {
           const current = activeSessions.get(safeSessionId);
-          if (current && current.shuttingDown) return;
+          if (current !== sessionObj) return;
+          if (current.shuttingDown) return;
           initBaileysSession(safeSessionId, false).catch((err) => {
             console.error(`[Session ${safeSessionId}] Reconnect failed:`, err);
           });
@@ -503,9 +578,6 @@ function sessionPayload(sessionId, sessionObj) {
     };
   }
   const live = isReallyConnected(sessionObj);
-  if (sessionObj.connected && !live) {
-    markSessionDisconnected(sessionObj, `${sessionId} stale connected flag`);
-  }
   const pending = ["qr-pending", "connecting"].includes(String(sessionObj.status || "").toLowerCase());
   return {
     session: sessionId,
@@ -516,59 +588,29 @@ function sessionPayload(sessionId, sessionObj) {
     profile_picture_url: live ? sessionObj.profilePictureUrl || null : null,
     // Never send the raw Baileys pairing text — the UI used to paint it as a broken PNG.
     qr: null,
-    qrDataUrl: qrImageIsComplete(sessionObj) ? sessionObj.qrDataUrl : null,
+    qrDataUrl: servableQrDataUrl(sessionObj),
   };
 }
 
-app.get("/status", async (req, res) => {
-  const sessionId = req.query.session || req.query.sessionId || "default";
-  try {
-    let sessionObj = activeSessions.get(sessionId);
-    if (sessionObj && sessionObj.connected && !isReallyConnected(sessionObj)) {
-      markSessionDisconnected(sessionObj, `${sessionId} dead socket on /status`);
-    }
-    // Restore a previously scanned session from saved creds, but do not start a
-    // brand-new QR socket from status polling (that used to kill in-progress logins).
-    if (!isLiveSession(sessionObj) && hasSavedCreds(sessionId)) {
-      sessionObj = await initBaileysSession(sessionId, false);
-    }
-    if (sessionObj && isReallyConnected(sessionObj) && !sessionObj.profilePictureUrl && sessionObj.sock) {
-      try {
-        sessionObj.profilePictureUrl = await fetchProfilePicture(sessionObj.sock);
-      } catch (e) {
-        // Never fail status just because the profile photo lookup failed.
-      }
-    }
-    return res.json(sessionPayload(sessionId, sessionObj));
-  } catch (err) {
-    return res.status(500).json({ error: err.message, session: sessionId });
-  }
+app.get("/status", (req, res) => {
+  const sessionId = requestSessionId(req);
+  if (!sessionId) return res.status(400).json({ error: "Missing session id" });
+  const sessionObj = activeSessions.get(sessionId) || null;
+  return res.json(sessionPayload(sessionId, sessionObj));
 });
 
-app.get("/qr", async (req, res) => {
-  const sessionId = req.query.session || req.query.sessionId || "default";
-  try {
-    let sessionObj = activeSessions.get(sessionId);
-    if (!sessionObj || !isLiveSession(sessionObj)) {
-      sessionObj = await initBaileysSession(sessionId, false);
-    }
-
-    sessionObj = await waitForQrOrConnected(sessionObj, 16000);
-    if (!isReallyConnected(sessionObj) && !qrImageIsComplete(sessionObj) && !hasSavedCreds(sessionId)) {
-      console.log(`[Session ${sessionId}] /qr timed out without image; starting a fresh pairing socket`);
-      sessionObj = await initBaileysSession(sessionId, true);
-      sessionObj = await waitForQrOrConnected(sessionObj, 18000);
-    }
-    return res.json(sessionPayload(sessionId, sessionObj));
-  } catch (err) {
-    return res.status(500).json({ error: err.message, session: sessionId });
-  }
+app.get("/qr", (req, res) => {
+  const sessionId = requestSessionId(req);
+  if (!sessionId) return res.status(400).json({ error: "Missing session id" });
+  const sessionObj = activeSessions.get(sessionId) || null;
+  if (!sessionObj) return res.json(sessionPayload(sessionId, null));
+  return res.json(sessionPayload(sessionId, sessionObj));
 });
 
 app.post("/pair", async (req, res) => {
-  const sessionId = req.body?.session || req.body?.sessionId || req.query?.session || "default";
+  const sessionId = requestSessionId(req);
+  if (!sessionId) return res.status(400).json({ error: "Missing session id" });
   // Only wipe creds when explicitly requested (Re-Pair / fresh QR).
-  // Default: restore existing session so Refresh does not kick a live phone link.
   const forceNew = Boolean(
     req.body?.forceNew ||
       req.body?.force ||
@@ -577,23 +619,13 @@ app.post("/pair", async (req, res) => {
       req.query?.force === "1"
   );
   try {
-    let sessionObj;
+    let sessionObj = activeSessions.get(sessionId);
     if (forceNew) {
       sessionObj = await initBaileysSession(sessionId, true);
-    } else {
-      // Keep an in-progress QR. Wiping here used to restart the socket before the PNG finished.
-      sessionObj = activeSessions.get(sessionId);
-      if (!isLiveSession(sessionObj)) {
-        sessionObj = await initBaileysSession(sessionId, false);
-      }
+    } else if (!sessionObj) {
+      sessionObj = await initBaileysSession(sessionId, false);
     }
-    sessionObj = await waitForQrOrConnected(sessionObj, 16000);
-    if (!isReallyConnected(sessionObj) && !qrImageIsComplete(sessionObj) && !hasSavedCreds(sessionId)) {
-      // Stale empty session never emits a scannable QR. Do not wipe saved creds here.
-      console.log(`[Session ${sessionId}] No QR after wait; forcing a fresh pairing socket`);
-      sessionObj = await initBaileysSession(sessionId, true);
-      sessionObj = await waitForQrOrConnected(sessionObj, 18000);
-    }
+    sessionObj = await waitForQrOrConnected(sessionId, 45000);
     return res.json(sessionPayload(sessionId, sessionObj));
   } catch (err) {
     return res.status(500).json({ error: err.message, session: sessionId });
@@ -601,13 +633,19 @@ app.post("/pair", async (req, res) => {
 });
 
 async function stopSession(sessionId) {
-  const existing = activeSessions.get(sessionId);
+  const id = String(sessionId || "").trim();
+  if (!id) throw new Error("Session ID is required");
+  const existing = activeSessions.get(id);
   if (existing) {
     existing.shuttingDown = true;
     existing.connected = false;
     existing.status = "disconnected";
+    existing.qr = null;
+    existing.qrDataUrl = null;
+    existing.qrRenderedFor = null;
     if (existing.sock) {
       try {
+        existing.sock.ev.removeAllListeners();
         await existing.sock.logout();
       } catch (e) {
         try {
@@ -618,18 +656,23 @@ async function stopSession(sessionId) {
       }
     }
   }
-  const sessionDir = path.join(SESSIONS_DIR, String(sessionId).replace(/[^a-zA-Z0-9_-]/g, "_"));
-  try {
-    fs.rmSync(sessionDir, { recursive: true, force: true });
-  } catch (e) {
-    // Ignore directory removal errors
+  if (!existing || activeSessions.get(id) === existing) {
+    activeSessions.delete(id);
   }
-  activeSessions.delete(sessionId);
-  return { ok: true, session: sessionId, connected: false, status: "disconnected" };
+  const safeId = sanitizeSessionId(id);
+  if (safeId) {
+    try {
+      fs.rmSync(path.join(SESSIONS_DIR, safeId), { recursive: true, force: true });
+    } catch (e) {
+      // Ignore directory removal errors
+    }
+  }
+  return { ok: true, session: id, connected: false, status: "disconnected" };
 }
 
 app.post("/disconnect", async (req, res) => {
-  const sessionId = req.body?.session || req.body?.sessionId || req.query?.session || "default";
+  const sessionId = requestSessionId(req);
+  if (!sessionId) return res.status(400).json({ error: "Missing session id" });
   try {
     return res.json(await stopSession(sessionId));
   } catch (err) {
@@ -638,7 +681,8 @@ app.post("/disconnect", async (req, res) => {
 });
 
 app.post("/logout", async (req, res) => {
-  const sessionId = req.body?.session || req.body?.sessionId || req.query?.session || "default";
+  const sessionId = requestSessionId(req);
+  if (!sessionId) return res.status(400).json({ error: "Missing session id" });
   try {
     return res.json(await stopSession(sessionId));
   } catch (err) {
@@ -801,7 +845,8 @@ async function sendAndConfirm(sock, jid, content, timeoutMs) {
 }
 
 app.post("/send", async (req, res) => {
-  const sessionId = req.body?.session || req.body?.sessionId || "default";
+  const sessionId = requestSessionId(req);
+  if (!sessionId) return res.status(400).json({ error: "Missing session id" });
   const toPhone = req.body?.to || req.body?.phone || req.body?.to_phone;
   const message = req.body?.message || req.body?.text || "";
   const documentUrl = (req.body?.document_url || req.body?.documentUrl || "").trim();
@@ -885,14 +930,12 @@ app.post("/send", async (req, res) => {
 setInterval(() => {
   for (const [sessionId, sessionObj] of activeSessions.entries()) {
     if (!sessionObj || sessionObj.shuttingDown) continue;
-    if (sessionObj.connected && !isReallyConnected(sessionObj)) {
-      markSessionDisconnected(sessionObj, `${sessionId} watchdog`);
-      if (hasSavedCreds(sessionId)) {
-        initBaileysSession(sessionId, false).catch((err) => {
-          console.error(`[Session ${sessionId}] Watchdog reconnect failed:`, err?.message || err);
-        });
-      }
-    }
+    if (isLiveSession(sessionObj)) continue;
+    if (!hasSavedCreds(sessionId)) continue;
+    if (sessionObj.sock && socketIsOpen(sessionObj.sock)) continue;
+    initBaileysSession(sessionId, false).catch((err) => {
+      console.error(`[Session ${sessionId}] Watchdog reconnect failed:`, err?.message || err);
+    });
   }
 }, 15_000);
 

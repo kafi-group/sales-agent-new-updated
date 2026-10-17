@@ -126,11 +126,12 @@ async function renderQrDataUrl(qr) {
 
 async function ensureQrRendered(sessionObj) {
   if (!sessionObj?.qr || qrImageIsComplete(sessionObj)) return sessionObj;
+  const rendering = sessionObj.qr;
   try {
-    const dataUrl = await renderQrDataUrl(sessionObj.qr);
-    if (sessionObj.qr && !sessionObj.shuttingDown) {
+    const dataUrl = await renderQrDataUrl(rendering);
+    if (sessionObj.qr === rendering && !sessionObj.shuttingDown) {
       sessionObj.qrDataUrl = dataUrl;
-      sessionObj.qrRenderedFor = sessionObj.qr;
+      sessionObj.qrRenderedFor = rendering;
     }
   } catch (err) {
     console.error("[QR] Render retry failed:", err?.message || err);

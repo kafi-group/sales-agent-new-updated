@@ -7,12 +7,15 @@ import {
   type WhatsAppTemplate,
 } from "../api/client";
 import { IconEye } from "./icons/AppIcons";
+import { whatsAppMetaSendPreviewLine } from "../utils/phoneUtils";
 import { WhatsAppTemplatePreviewModal } from "./WhatsAppTemplatePreviewModal";
 
 interface BulkWhatsAppModalProps {
   buyerIds: number[];
   /** Single-lead sends: message this exact number (e.g. the one picked in the Workspace). */
   toPhone?: string | null;
+  /** Lead country — improves E.164 preview for local numbers (e.g. UAE 050…). */
+  countryHint?: string | null;
   onClose: () => void;
   onError: (message: string) => void;
   onCreated: (result: WhatsAppCampaignDraftResponse) => void;
@@ -36,6 +39,7 @@ type BulkWhatsAppTab = "personal" | "template" | "personal_template";
 export function BulkWhatsAppModal({
   buyerIds,
   toPhone,
+  countryHint,
   onClose,
   onError,
   onCreated,
@@ -43,6 +47,16 @@ export function BulkWhatsAppModal({
   const [tab, setTab] = useState<BulkWhatsAppTab>("personal");
   // Only meaningful for a single lead; with several leads each uses its own default number.
   const exactPhone = buyerIds.length === 1 && toPhone && toPhone.trim() ? toPhone.trim() : undefined;
+  const sendPreviewLine = useMemo(
+    () =>
+      whatsAppMetaSendPreviewLine({
+        toPhone: exactPhone,
+        countryHint,
+        recipientCount: buyerIds.length,
+        channel: tab === "template" ? "meta" : "personal",
+      }),
+    [buyerIds.length, countryHint, exactPhone, tab],
+  );
   const [sending, setSending] = useState(false);
   const [draftingAi, setDraftingAi] = useState(false);
 
@@ -293,9 +307,6 @@ export function BulkWhatsAppModal({
             </h3>
             <p className="text-sm text-slate-400 mt-1">
               Dispatch to your staff testing list or targeted buyer contacts.
-              {exactPhone ? (
-                <span className="ml-2 text-emerald-300">Sending to {exactPhone}</span>
-              ) : null}
             </p>
           </div>
           <button
@@ -593,7 +604,9 @@ export function BulkWhatsAppModal({
           )}
         </div>
 
-        <div className="p-4 sm:p-5 border-t border-slate-800 flex justify-end gap-3 shrink-0 bg-slate-950/60">
+        <div className="p-4 sm:p-5 border-t border-slate-800 flex flex-col gap-3 shrink-0 bg-slate-950/60">
+          <p className="text-sm text-emerald-300/95 font-medium leading-snug">{sendPreviewLine}</p>
+          <div className="flex justify-end gap-3">
           <button
             type="button"
             onClick={onClose}
@@ -631,6 +644,7 @@ export function BulkWhatsAppModal({
               {sending ? "Sending…" : `Send ${buyerIds.length} message(s)`}
             </button>
           )}
+          </div>
         </div>
       </div>
 

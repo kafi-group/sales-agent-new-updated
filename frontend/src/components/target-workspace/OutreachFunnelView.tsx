@@ -1288,6 +1288,7 @@ export const OutreachFunnelView: React.FC<OutreachFunnelViewProps> = ({
         <BulkWhatsAppModal
           buyerIds={[whatsappTarget.row.id]}
           toPhone={whatsappTarget.phone}
+          countryHint={whatsappTarget.row.country}
           onClose={() => setWhatsappTarget(null)}
           onError={(msg) => {
             onError?.(msg);

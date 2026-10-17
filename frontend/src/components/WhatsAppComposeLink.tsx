@@ -14,6 +14,7 @@ import {
   IconX,
 } from "./icons/AppIcons";
 import { ProseTextarea } from "./ProseTextField";
+import { whatsAppMetaSendPreviewLine } from "../utils/phoneUtils";
 import { WhatsAppTemplatePreviewModal } from "./WhatsAppTemplatePreviewModal";
 
 type ComposeTab = "personal" | "template";
@@ -48,6 +49,16 @@ export function LeadWhatsAppComposeModal({
 }: LeadWhatsAppComposeModalProps) {
   const { row, phone } = target;
   const [tab, setTab] = useState<ComposeTab>(target.initialTab ?? "personal");
+  const metaSendPreview = useMemo(
+    () =>
+      whatsAppMetaSendPreviewLine({
+        toPhone: phone,
+        countryHint: row.country,
+        recipientCount: 1,
+        channel: tab === "template" ? "meta" : "personal",
+      }),
+    [phone, row.country, tab],
+  );
   const [sending, setSending] = useState(false);
   const [draftingAi, setDraftingAi] = useState(false);
 
@@ -411,7 +422,9 @@ export function LeadWhatsAppComposeModal({
           )}
         </div>
 
-        <div className="p-5 border-t border-slate-800 flex flex-wrap justify-end gap-2 shrink-0">
+        <div className="p-5 border-t border-slate-800 flex flex-col gap-3 shrink-0">
+          <p className="text-sm text-emerald-300/95 font-medium leading-snug">{metaSendPreview}</p>
+          <div className="flex flex-wrap justify-end gap-2">
           <ActionButton icon={IconX} size="md" onClick={onClose} title="Cancel">
             Cancel
           </ActionButton>
@@ -438,6 +451,7 @@ export function LeadWhatsAppComposeModal({
               {sending ? "Sending…" : "Send template"}
             </ActionButton>
           )}
+          </div>
         </div>
       </div>
 

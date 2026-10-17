@@ -30,8 +30,6 @@ export type Tab =
   | "whatsapp-activity"
   | "whatsapp-inbox"
   | "whatsapp-mobile"
-  | "telegram-mobile"
-  | "telegram-templates"
   | "leads"
   | "data-synthesis"
   | "target-workspace"
@@ -240,9 +238,6 @@ export function AppSidebar({
     activeTab === "whatsapp-activity" ||
     activeTab === "whatsapp-mobile",
   );
-  const [telegramMenuOpen, setTelegramMenuOpen] = useState(
-    activeTab === "telegram-mobile" || activeTab === "telegram-templates",
-  );
   const [callsMenuOpen, setCallsMenuOpen] = useState(activeTab === "calls");
   const [aiMenuOpen, setAiMenuOpen] = useState(
     activeTab === "ai-mode" ||
@@ -337,12 +332,6 @@ export function AppSidebar({
       activeTab === "whatsapp-mobile"
     ) {
       setWhatsappMenuOpen(true);
-    }
-  }, [activeTab]);
-
-  useEffect(() => {
-    if (activeTab === "telegram-mobile" || activeTab === "telegram-templates") {
-      setTelegramMenuOpen(true);
     }
   }, [activeTab]);
 
@@ -551,9 +540,6 @@ export function AppSidebar({
                       activeTab === "whatsapp-templates" ||
                       activeTab === "whatsapp-activity" ||
                       activeTab === "whatsapp-mobile"
-                    : item.id === "telegram-mobile"
-                      ? activeTab === "telegram-mobile" ||
-                        activeTab === "telegram-templates"
                     : item.id === "calls"
                       ? activeTab === "calls"
                       : item.id === "ai"
@@ -578,7 +564,6 @@ export function AppSidebar({
               const isTableParent = item.id === "table" && hasChildren;
               const isMailParent = item.id === "inbox" && hasChildren;
               const isWhatsAppParent = item.id === "whatsapp-inbox" && hasChildren;
-              const isTelegramParent = item.id === "telegram-mobile" && hasChildren;
               const isCallsParent = item.id === "calls" && hasChildren;
               const isAiParent = (item.id === "ai" || item.id === "ai-group") && hasChildren;
               const isOthersParent = item.id === "others" && hasChildren;
@@ -589,7 +574,6 @@ export function AppSidebar({
                 isTableParent ||
                 isMailParent ||
                 isWhatsAppParent ||
-                isTelegramParent ||
                 isCallsParent ||
                 isAiParent ||
                 isOthersParent ||
@@ -602,8 +586,6 @@ export function AppSidebar({
                   ? mailMenuOpen
                   : isWhatsAppParent
                     ? whatsappMenuOpen
-                    : isTelegramParent
-                      ? telegramMenuOpen
                     : isCallsParent
                       ? callsMenuOpen
                       : isAiParent
@@ -623,8 +605,6 @@ export function AppSidebar({
                   ? setMailMenuOpen
                   : isWhatsAppParent
                     ? setWhatsappMenuOpen
-                    : isTelegramParent
-                      ? setTelegramMenuOpen
                     : isCallsParent
                       ? setCallsMenuOpen
                       : isAiParent
@@ -642,8 +622,6 @@ export function AppSidebar({
                 ? defaultTableSection
                 : isWhatsAppParent
                   ? "whatsapp-inbox"
-                  : isTelegramParent
-                    ? "telegram-mobile"
                   : isCallsParent
                     ? "calls"
                     : isAiParent
@@ -673,10 +651,6 @@ export function AppSidebar({
                         : activeTab === "whatsapp-mobile"
                           ? "whatsapp-mobile"
                           : "whatsapp-inbox"
-                    : isTelegramParent
-                      ? activeTab === "telegram-templates"
-                        ? "telegram-templates"
-                        : "telegram-mobile"
                     : isCallsParent
                       ? "calls"
                       : isAiParent
@@ -732,12 +706,6 @@ export function AppSidebar({
                         if (isWhatsAppParent) {
                           setWhatsappMenuOpen((open) => !open);
                           onSelectWhatsAppSection?.("whatsapp-inbox");
-                          closeMobile();
-                          return;
-                        }
-                        if (isTelegramParent) {
-                          setTelegramMenuOpen((open) => !open);
-                          onSelectTab("telegram-mobile");
                           closeMobile();
                           return;
                         }
@@ -884,9 +852,6 @@ export function AppSidebar({
                                   } else {
                                     onSelectWhatsAppSection?.(child.id as WhatsAppSection);
                                   }
-                                } else if (isTelegramParent) {
-                                  setTelegramMenuOpen(true);
-                                  onSelectTab(child.id as Tab);
                                 } else if (isCallsParent) {
                                   setCallsMenuOpen(true);
                                   onSelectTab(child.id as Tab);

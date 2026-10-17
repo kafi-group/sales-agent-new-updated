@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { IndexIconKey } from "../../data/indexSections";
-import { LogoOutlook, LogoTwilio, LogoWhatsApp, LogoLinkedIn, LogoTelegram } from "./BrandLogos";
+import { LogoOutlook, LogoTwilio, LogoWhatsApp, LogoLinkedIn } from "./BrandLogos";
 import { adminIcon, resolveNavIconSrc } from "./navIconImages";
 
 export type IconSize = "xs" | "sm" | "md" | "lg";
@@ -511,11 +511,6 @@ export function IconWhatsApp({ size, className }: IconProps) {
   return <LogoWhatsApp size={size} className={className} />;
 }
 
-/** Telegram brand logo (colored). */
-export function IconTelegram({ size, className }: IconProps) {
-  return <LogoTelegram size={size} className={className} />;
-}
-
 /** Official Microsoft Outlook brand logo (colored). */
 export function IconOutlook({ size, className }: IconProps) {
   return <LogoOutlook size={size} className={className} />;
@@ -623,10 +618,6 @@ export function NavIcon({
     return <IconActivity size={size} className="text-emerald-400" />;
   if (navId === "whatsapp-inbox" || navId.startsWith("whatsapp"))
     return <LogoWhatsApp size={size} />;
-  if (navId === "telegram-templates")
-    return <IconTemplate size={size} className="text-sky-400" />;
-  if (navId === "telegram-mobile" || navId.startsWith("telegram"))
-    return <LogoTelegram size={size} />;
   if (navId === "leads") return <IconSearch {...props} />;
   if (navId === "data-synthesis") {
     const emojiSize = size === "xs" ? "text-xs" : size === "md" ? "text-base" : "text-sm";
@@ -655,7 +646,6 @@ export function NavIcon({
   if (navId === "not_interested_clients") return <IconXCircle {...props} />;
   if (navId === "not_received_call_clients") return <IconPhoneMissed {...props} />;
   if (navId === "whatsapp-mobile") return <IconWhatsApp {...props} />;
-  if (navId === "telegram-mobile") return <IconTelegram {...props} />;
   if (navId === "hyperstore_targeted" || navId === "targeted_distributor" || navId === "targeted_client" || navId === "khalid_focused_sales")
     return <IconSearch {...props} />;
   if (navId.startsWith("assigned:")) return <IconUser {...props} />;

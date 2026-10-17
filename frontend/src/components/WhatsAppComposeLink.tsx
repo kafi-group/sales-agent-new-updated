@@ -15,6 +15,7 @@ import {
 } from "./icons/AppIcons";
 import { ProseTextarea } from "./ProseTextField";
 import { whatsAppMetaSendPreviewLine } from "../utils/phoneUtils";
+import { formatWhatsAppErrorForUser } from "../utils/whatsappFailure";
 import { WhatsAppTemplatePreviewModal } from "./WhatsAppTemplatePreviewModal";
 
 type ComposeTab = "personal" | "template";
@@ -153,7 +154,11 @@ export function LeadWhatsAppComposeModal({
       onSent(`WhatsApp message sent to ${row.company_name} via your connected WhatsApp!`);
       onClose();
     } catch (e) {
-      onError(e instanceof Error ? e.message : "Failed to send WhatsApp message via connected device");
+      onError(
+        formatWhatsAppErrorForUser(
+          e instanceof Error ? e.message : "Failed to send WhatsApp message via connected device",
+        ),
+      );
     } finally {
       setSending(false);
     }
@@ -202,7 +207,7 @@ export function LeadWhatsAppComposeModal({
       const paymentHint = /payment|eligibility|131042/i.test(reason)
         ? " Fix: Meta Business Suite → WhatsApp Account (Essence) → add/assign a payment method, then retry."
         : "";
-      onError(`${reason}${paymentHint}`);
+      onError(formatWhatsAppErrorForUser(`${reason}${paymentHint}`));
     } catch (e) {
       const raw = e instanceof Error ? e.message : "Failed to send WhatsApp template";
       if (/502|failed to respond|application error/i.test(raw)) {
@@ -210,7 +215,7 @@ export function LeadWhatsAppComposeModal({
           "Server timed out while talking to Meta (502). Wait a few seconds and try Send again — if it keeps failing, check Railway logs / WhatsApp token.",
         );
       } else {
-        onError(raw);
+        onError(formatWhatsAppErrorForUser(raw));
       }
     } finally {
       setSending(false);

@@ -641,7 +641,14 @@ def upsert_primary_contact(
         db.refresh(contact)
         # Pull any stranded phone/email from sibling rows (legacy AI split contacts).
         merged = merge_stranded_contact_fields(db, buyer_id)
-        return merged or contact
+        target = merged or contact
+        from modules.phone_routing import route_contact_model
+
+        buyer = db.get(Buyer, buyer_id) if buyer_id else None
+        if target and route_contact_model(target, buyer.country if buyer else None):
+            db.commit()
+            db.refresh(target)
+        return target
 
     has_extra = any((value or "").strip() for value in contact_extras.values() if value is not None)
     if not (
@@ -663,7 +670,14 @@ def upsert_primary_contact(
     for key, value in contact_extras.items():
         if value is not None and str(value).strip():
             payload[key] = str(value).strip()
-    return create_contact(db, payload)
+    created = create_contact(db, payload)
+    from modules.phone_routing import route_contact_model
+
+    buyer = db.get(Buyer, buyer_id)
+    if route_contact_model(created, buyer.country if buyer else None):
+        db.commit()
+        db.refresh(created)
+    return created
 
 
 def delete_buyer(db: Session, buyer_id: int, *, commit: bool = True) -> bool:

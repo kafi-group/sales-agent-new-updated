@@ -890,7 +890,10 @@ app.post("/send", async (req, res) => {
     const jid = await lookupWhatsAppJid(sessionObj.sock, rawDigits);
     if (!jid) {
       return res.status(404).json({
-        error: `${rawDigits} is not on WhatsApp, so nothing was sent.`,
+        error:
+          "This person does not exist on WhatsApp. Check that you are using their personal mobile number (not a landline), then try again.",
+        not_on_whatsapp: true,
+        phone: rawDigits,
       });
     }
 

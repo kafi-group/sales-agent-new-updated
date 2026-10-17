@@ -57,21 +57,37 @@ function aliasToCanonical(alias: string): string | null {
   return null;
 }
 
+function replacePlaceholderToken(rawKey: string, lead: PersonalizeLead, original: string): string {
+  const canonical = aliasToCanonical(rawKey);
+  return canonical ? fieldValue(lead, canonical) : original;
+}
+
 export function personalizeEmailText(template: string, lead: PersonalizeLead): string {
   if (!template) return template;
   let out = template;
 
   // {{company_name}} and {{Company Name}}
-  out = out.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (_match, rawKey: string) => {
-    const canonical = aliasToCanonical(rawKey);
-    return canonical ? fieldValue(lead, canonical) : _match;
-  });
+  out = out.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (match, rawKey: string) =>
+    replacePlaceholderToken(rawKey, lead, match),
+  );
+
+  // {contact_name} / {company_name} (single braces — common in AI drafts)
+  out = out.replace(/\{([^{}]{1,64})\}/g, (match, rawKey: string) =>
+    replacePlaceholderToken(rawKey, lead, match),
+  );
 
   // [company_name] and [Company Name]
-  out = out.replace(/\[([^\]]+)\]/g, (match, rawKey: string) => {
-    const canonical = aliasToCanonical(rawKey);
-    return canonical ? fieldValue(lead, canonical) : match;
-  });
+  out = out.replace(/\[([^\]]+)\]/g, (match, rawKey: string) =>
+    replacePlaceholderToken(rawKey, lead, match),
+  );
+
+  // Typo forms that still show up in sent mail, e.g. [contact_name) or (contact_name]
+  out = out.replace(/\[([^\])\]]{1,64})\)/g, (match, rawKey: string) =>
+    replacePlaceholderToken(rawKey, lead, match),
+  );
+  out = out.replace(/\(([^\])\]]{1,64})\]/g, (match, rawKey: string) =>
+    replacePlaceholderToken(rawKey, lead, match),
+  );
 
   return out;
 }

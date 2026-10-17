@@ -26,6 +26,11 @@ function todayInKarachi(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Karachi" }).format(new Date());
 }
 
+function startOfMonthKarachi(fromDate?: string): string {
+  const base = fromDate || todayInKarachi();
+  return `${base.slice(0, 7)}-01`;
+}
+
 function formatWhen(iso: string) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
@@ -49,10 +54,13 @@ const PERIOD_OPTIONS: { value: KpiPeriod; label: string }[] = [
   { value: "day", label: "Daily" },
   { value: "week", label: "Weekly" },
   { value: "month", label: "Monthly" },
+  { value: "custom", label: "Custom" },
 ];
 
 const COUNT_CARDS: { key: keyof KpiCounts; label: string }[] = [
   { key: "calls_logged", label: "Calls attempted" },
+  { key: "calls_manual", label: "Manual calls" },
+  { key: "calls_follow_up_clients", label: "Follow up clients calls" },
   { key: "companies_called", label: "Companies called" },
   { key: "outcomes_follow_up", label: "Calls picked up" },
   { key: "outcomes_interested", label: "Client interested" },
@@ -89,6 +97,8 @@ export function KpiPage({ onError }: KpiPageProps) {
   );
   const [period, setPeriod] = useState<KpiPeriod>("day");
   const [date, setDate] = useState(todayInKarachi);
+  const [customDateFrom, setCustomDateFrom] = useState(() => startOfMonthKarachi());
+  const [customDateTo, setCustomDateTo] = useState(todayInKarachi);
   const [selectedUserId, setSelectedUserId] = useState<string>("");
   const [assignees, setAssignees] = useState<AppUser[]>([]);
   const [report, setReport] = useState<DailyKpiReport | null>(null);
@@ -113,8 +123,10 @@ export function KpiPage({ onError }: KpiPageProps) {
       const userId =
         isAdmin && selectedUserId ? Number(selectedUserId) : undefined;
       const result = await client.getDailyKpi({
-        date,
+        date: period === "custom" ? customDateFrom : date,
         period,
+        date_from: period === "custom" ? customDateFrom : undefined,
+        date_to: period === "custom" ? customDateTo : undefined,
         user_id: userId ?? null,
       });
       setReport(result);
@@ -124,7 +136,15 @@ export function KpiPage({ onError }: KpiPageProps) {
     } finally {
       setLoading(false);
     }
-  }, [date, isAdmin, onError, period, selectedUserId]);
+  }, [
+    customDateFrom,
+    customDateTo,
+    date,
+    isAdmin,
+    onError,
+    period,
+    selectedUserId,
+  ]);
 
   useEffect(() => {
     void refresh();
@@ -134,14 +154,22 @@ export function KpiPage({ onError }: KpiPageProps) {
     setScorecardLoading(true);
     try {
       const userId = isAdmin && selectedUserId ? Number(selectedUserId) : undefined;
-      setScorecard(await client.getKpiScorecard({ date, period, user_id: userId ?? null }));
+      setScorecard(
+        await client.getKpiScorecard({
+          date: period === "custom" ? customDateFrom : date,
+          period,
+          date_from: period === "custom" ? customDateFrom : undefined,
+          date_to: period === "custom" ? customDateTo : undefined,
+          user_id: userId ?? null,
+        }),
+      );
     } catch (e) {
       setScorecard(null);
       onError(e instanceof Error ? e.message : "Failed to load the score card");
     } finally {
       setScorecardLoading(false);
     }
-  }, [date, isAdmin, onError, period, selectedUserId]);
+  }, [customDateFrom, customDateTo, date, isAdmin, onError, period, selectedUserId]);
 
   useEffect(() => {
     void loadScorecard();
@@ -171,7 +199,13 @@ export function KpiPage({ onError }: KpiPageProps) {
       : report?.user?.full_name || user?.full_name || "Your activity";
 
   const periodLabel =
-    period === "week" ? "Weekly" : period === "month" ? "Monthly" : "Daily";
+    period === "week"
+      ? "Weekly"
+      : period === "month"
+        ? "Monthly"
+        : period === "custom"
+          ? "Custom"
+          : "Daily";
 
   const dateInputLabel =
     period === "week"
@@ -205,15 +239,40 @@ export function KpiPage({ onError }: KpiPageProps) {
               ))}
             </select>
           </label>
-          <label className="block text-xs text-slate-400">
-            {dateInputLabel}
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="mt-1 block rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
-            />
-          </label>
+          {period === "custom" ? (
+            <>
+              <label className="block text-xs text-slate-400">
+                From
+                <input
+                  type="date"
+                  value={customDateFrom}
+                  max={customDateTo}
+                  onChange={(e) => setCustomDateFrom(e.target.value)}
+                  className="mt-1 block rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
+                />
+              </label>
+              <label className="block text-xs text-slate-400">
+                To
+                <input
+                  type="date"
+                  value={customDateTo}
+                  min={customDateFrom}
+                  onChange={(e) => setCustomDateTo(e.target.value)}
+                  className="mt-1 block rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
+                />
+              </label>
+            </>
+          ) : (
+            <label className="block text-xs text-slate-400">
+              {dateInputLabel}
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="mt-1 block rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
+              />
+            </label>
+          )}
           {isAdmin && (
             <label className="block text-xs text-slate-400">
               User
@@ -247,7 +306,7 @@ export function KpiPage({ onError }: KpiPageProps) {
             onClick={exportPdf}
             className="rounded-lg border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-100 hover:bg-slate-700 disabled:opacity-50"
           >
-            {pdfExporting ? "Exporting…" : "Export PDF"}
+            {pdfExporting ? "Exporting…" : "Export automatic KPI (PDF)"}
           </button>
         </div>
       </div>
@@ -256,6 +315,9 @@ export function KpiPage({ onError }: KpiPageProps) {
         <p className="text-sm text-slate-400">Loading report…</p>
       ) : report ? (
         <>
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-500">
+            Automatic KPI
+          </h3>
           <p className="text-sm text-slate-300">
             Showing <span className="text-slate-100 font-medium">{scopeLabel}</span>{" "}
             · {report.activity_count} activit
@@ -375,6 +437,16 @@ export function KpiPage({ onError }: KpiPageProps) {
                                 {row.counts.companies_called} {row.counts.companies_called === 1 ? "company" : "companies"}
                               </div>
                             ) : null}
+                            {(row.counts.calls_manual ?? 0) > 0 ? (
+                              <div className="text-[10px] text-violet-400/90 font-normal">
+                                {row.counts.calls_manual} manual dial
+                              </div>
+                            ) : null}
+                            {(row.counts.calls_follow_up_clients ?? 0) > 0 ? (
+                              <div className="text-[10px] text-amber-400/90 font-normal">
+                                {row.counts.calls_follow_up_clients} follow up table
+                              </div>
+                            ) : null}
                           </td>
                           <td data-col="outcomes" className="px-3 py-2 tabular-nums">
                             <div>{outcomes}</div>
@@ -452,8 +524,10 @@ export function KpiPage({ onError }: KpiPageProps) {
           scopeLabel={scopeLabel}
           dateLabel={formatRangeLabel(report)}
           reportParams={{
-            date,
+            date: period === "custom" ? customDateFrom : date,
             period,
+            date_from: period === "custom" ? customDateFrom : undefined,
+            date_to: period === "custom" ? customDateTo : undefined,
             user_id: isAdmin && selectedUserId ? Number(selectedUserId) : null,
           }}
           onClose={() => {

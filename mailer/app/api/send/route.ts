@@ -70,6 +70,8 @@ export async function POST(req: NextRequest) {
         url?: string;
         size?: number;
       }>;
+      in_reply_to?: string;
+      references?: string;
     };
     try {
       body = await req.json();
@@ -225,6 +227,8 @@ export async function POST(req: NextRequest) {
       html: asHtml,
       credsOverride: smtpCreds,
       attachments: smtpAttachments.length ? smtpAttachments : undefined,
+      inReplyTo: (body.in_reply_to || "").trim() || undefined,
+      references: (body.references || "").trim() || undefined,
     });
 
     if (recordActivity) {
@@ -258,9 +262,12 @@ export async function POST(req: NextRequest) {
         to,
         cc,
         bcc,
-        subject,
-        body: text,
+        subject: personalizedSubject,
+        body: sendBody,
         html: asHtml,
+        messageId: sent.messageId,
+        inReplyTo: (body.in_reply_to || "").trim() || undefined,
+        references: (body.references || "").trim() || undefined,
       });
     }
 

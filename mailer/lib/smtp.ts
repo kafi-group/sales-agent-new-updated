@@ -201,7 +201,9 @@ export async function sendSmtp(options: {
     content: string;
     contentType?: string;
   }>;
-}): Promise<{ ok: boolean; message: string }> {
+  inReplyTo?: string;
+  references?: string;
+}): Promise<{ ok: boolean; message: string; messageId?: string }> {
   if (!options.credsOverride?.email || !options.credsOverride?.password) {
     return {
       ok: false,
@@ -220,7 +222,9 @@ export async function sendSmtp(options: {
   const port = Number(process.env.MAILBOX_SMTP_PORT || "465");
   const sslHostname = process.env.MAILBOX_SSL_HOSTNAME || "mail.kafi-group.com";
 
-  async function attempt(authUser: string): Promise<{ ok: boolean; message: string }> {
+  async function attempt(
+    authUser: string,
+  ): Promise<{ ok: boolean; message: string; messageId?: string }> {
     const transporter = nodemailer.createTransport({
       host,
       port,
@@ -269,7 +273,7 @@ export async function sendSmtp(options: {
         contentDisposition: "inline" as const,
       }));
 
-      await transporter.sendMail({
+      const sentInfo = await transporter.sendMail({
         from,
         to: options.to,
         ...(cc ? { cc } : {}),
@@ -278,9 +282,13 @@ export async function sendSmtp(options: {
         text: htmlToPlain(options.body),
         html: extracted.html,
         replyTo: creds!.email,
+        ...(options.inReplyTo ? { inReplyTo: options.inReplyTo } : {}),
+        ...(options.references ? { references: options.references } : {}),
         attachments: [...mailAttachments, ...inlineAttachments],
       });
-      return { ok: true, message: "sent" };
+      const messageId =
+        typeof sentInfo?.messageId === "string" ? sentInfo.messageId : undefined;
+      return { ok: true, message: "sent", messageId };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       return { ok: false, message: msg };

@@ -634,6 +634,7 @@ def initiate_lead_call(
         )
         contact_name = result.get("contact_name") or "contact"
         phone = result.get("lead_phone") or ""
+        dial_section = (payload.dial_section or "").strip() or None
         activity_module.log_activity(
             db,
             user_id=user.id,
@@ -642,7 +643,11 @@ def initiate_lead_call(
             summary=f"Called {company} ({contact_name}" + (f", {phone}" if phone else "") + ")",
             entity_type="interaction",
             entity_id=result.get("id"),
-            details={"buyer_id": lead_id, "company_name": company},
+            details={
+                "buyer_id": lead_id,
+                "company_name": company,
+                **({"dial_section": dial_section} if dial_section else {}),
+            },
         )
 
         ai_mode_module.record_call_activity(
@@ -691,11 +696,16 @@ def initiate_manual_call(
             db,
             user_id=user.id,
             activity_type=activity_module.CALL_LOGGED,
-            title="Call logged",
-            summary=f"Called {company} ({contact_name}, {phone})",
+            title="Manual call logged",
+            summary=f"Manual call to {company} ({contact_name}, {phone})",
             entity_type="interaction",
             entity_id=result.get("id"),
-            details={"buyer_id": result.get("buyer_id"), "company_name": company},
+            details={
+                "buyer_id": result.get("buyer_id"),
+                "company_name": company,
+                "dial_source": "manual_dial",
+                "manual_call": True,
+            },
         )
 
         ai_mode_module.record_call_activity(

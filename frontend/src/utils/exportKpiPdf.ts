@@ -1,8 +1,20 @@
-import { jsPDF } from "jspdf";
 import type { DailyKpiReport, KpiCounts } from "../api/client";
+import {
+  addBody,
+  addHeading,
+  addKeyValueGrid,
+  addRule,
+  addTableHeader,
+  addTableRow,
+  createPdfContext,
+  safeFilenamePart,
+  savePdf,
+} from "./kpiPdfLayout";
 
 const COUNT_LABELS: { key: keyof KpiCounts; label: string }[] = [
   { key: "calls_logged", label: "Calls attempted" },
+  { key: "calls_manual", label: "Manual calls (dial pad)" },
+  { key: "calls_follow_up_clients", label: "Follow up clients calls" },
   { key: "companies_called", label: "Companies called" },
   { key: "outcomes_follow_up", label: "Calls picked up" },
   { key: "outcomes_interested", label: "Client interested" },
@@ -48,134 +60,105 @@ function formatWhen(iso: string): string {
   });
 }
 
-function safeFilenamePart(value: string): string {
-  return value.replace(/[^\w.-]+/g, "_").replace(/_+/g, "_").slice(0, 80);
-}
-
-/**
- * Build and download a PDF of the KPI report: header, AI/rules summary (if any),
- * count cards, per-user table (team), and full activity list.
- */
+/** Automatic KPI only — system-tracked activity, scorecard, and work log. */
 export function exportKpiReportPdf(input: KpiPdfInput): void {
   const { report, summary, summarySubject, scopeLabel, periodLabel } = input;
-  const doc = new jsPDF({ unit: "mm", format: "a4" });
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 14;
-  const maxWidth = pageWidth - margin * 2;
-  let y = margin;
+  const ctx = createPdfContext("portrait");
+  const exportedAt = new Date().toLocaleString(undefined, { timeZone: "Asia/Karachi" });
 
-  const ensureSpace = (needed: number) => {
-    if (y + needed > pageHeight - margin) {
-      doc.addPage();
-      y = margin;
-    }
-  };
-
-  const addHeading = (text: string, size = 14) => {
-    ensureSpace(10);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(size);
-    doc.setTextColor(20, 20, 20);
-    doc.text(text, margin, y);
-    y += size * 0.45 + 2;
-  };
-
-  const addBody = (text: string, opts?: { bold?: boolean; size?: number; color?: [number, number, number] }) => {
-    const size = opts?.size ?? 10;
-    const lines = doc.splitTextToSize(text, maxWidth) as string[];
-    ensureSpace(lines.length * (size * 0.4) + 2);
-    doc.setFont("helvetica", opts?.bold ? "bold" : "normal");
-    doc.setFontSize(size);
-    if (opts?.color) doc.setTextColor(...opts.color);
-    else doc.setTextColor(40, 40, 40);
-    doc.text(lines, margin, y);
-    y += lines.length * (size * 0.4) + 2;
-  };
-
-  const addRule = () => {
-    ensureSpace(4);
-    doc.setDrawColor(180, 180, 180);
-    doc.setLineWidth(0.2);
-    doc.line(margin, y, pageWidth - margin, y);
-    y += 5;
-  };
-
-  // Header
-  addHeading("Kafi Commodities — KPI Report", 16);
-  addBody(`${periodLabel} activity · ${formatRange(report)}`, { bold: true, size: 11 });
-  addBody(`Scope: ${scopeLabel}`);
-  addBody(`Timezone: ${report.timezone || "Asia/Karachi"}`);
-  addBody(`Activities tracked: ${report.activity_count}`);
-  addBody(`Exported: ${new Date().toLocaleString(undefined, { timeZone: "Asia/Karachi" })}`, {
-    size: 8,
-    color: [100, 100, 100],
+  addHeading(ctx, "Kafi Commodities — Automatic KPI Report", 15);
+  addBody(ctx, "System-tracked calls, email, WhatsApp, and table activity", {
+    size: 10,
+    color: [80, 80, 80],
   });
-  addRule();
+  addBody(ctx, `${periodLabel} · ${formatRange(report)}`, { bold: true, size: 11 });
+  addBody(ctx, `Scope: ${scopeLabel}`);
+  addBody(ctx, `Timezone: ${report.timezone || "Asia/Karachi"} · ${report.activity_count} activities`, {
+    size: 9,
+  });
+  addBody(ctx, `Exported: ${exportedAt}`, { size: 8, color: [110, 110, 110] });
+  addRule(ctx);
 
-  // Summary
+  addHeading(ctx, "Score card", 12);
   if (summary?.trim()) {
-    addHeading("Score card", 13);
     if (summarySubject?.trim()) {
-      addBody(summarySubject.trim(), { bold: true, size: 11 });
+      addBody(ctx, summarySubject.trim(), { bold: true, size: 10 });
     }
-    addBody(summary.trim(), { size: 9 });
-    addRule();
+    addBody(ctx, summary.trim(), { size: 9 });
   } else {
-    addHeading("Score card", 13);
-    addBody("No score card for this period (no targets set yet, or an off day).", {
+    addBody(ctx, "No score card for this period (no targets set yet, or an off day).", {
       size: 9,
       color: [120, 80, 40],
     });
-    addRule();
   }
+  addRule(ctx);
 
-  // Counts
-  addHeading("Totals", 13);
-  for (const card of COUNT_LABELS) {
-    addBody(`${card.label}: ${report.counts[card.key]}`, { size: 9 });
-  }
-  addRule();
+  addHeading(ctx, "Metric totals", 12);
+  const countPairs = COUNT_LABELS.map((card) => ({
+    label: card.label,
+    value: report.counts[card.key] ?? 0,
+  }));
+  addKeyValueGrid(ctx, countPairs, 2);
+  addRule(ctx);
 
-  // Per user (team)
   if (report.scope === "team" && report.per_user.length > 0) {
-    addHeading("Per user", 13);
-    for (const row of report.per_user) {
+    addHeading(ctx, "Per user breakdown", 12);
+    const cols = [
+      { label: "User", width: 42 },
+      { label: "Calls", width: 16 },
+      { label: "Outcomes", width: 20 },
+      { label: "Edits", width: 16 },
+      { label: "Email", width: 16 },
+      { label: "WhatsApp", width: 20 },
+      { label: "Events", width: ctx.maxWidth - 42 - 16 - 20 - 16 - 16 - 20 },
+    ];
+    addTableHeader(ctx, cols);
+    report.per_user.forEach((row, index) => {
       const name = row.user?.full_name || "Unknown";
       const outcomes =
         row.counts.outcomes_interested +
         (row.counts.outcomes_follow_up ?? 0) +
         row.counts.outcomes_not_interested +
         row.counts.outcomes_not_received_call;
-      addBody(
-        `${name} — calls ${row.counts.calls_logged}, outcomes ${outcomes}, edits ${row.counts.table_edits}, email ${(row.counts.personal_emails_sent ?? 0) + (row.counts.bulk_emails_sent ?? 0)}, WhatsApp ${(row.counts.personal_whatsapp_sent ?? 0) + (row.counts.bulk_whatsapp_sent ?? 0)}, events ${row.activity_count}`,
-        { size: 9 },
+      const email = (row.counts.personal_emails_sent ?? 0) + (row.counts.bulk_emails_sent ?? 0);
+      const wa =
+        (row.counts.personal_whatsapp_sent ?? 0) + (row.counts.bulk_whatsapp_sent ?? 0);
+      addTableRow(
+        ctx,
+        [
+          { text: name, width: cols[0].width },
+          { text: String(row.counts.calls_logged), width: cols[1].width },
+          { text: String(outcomes), width: cols[2].width },
+          { text: String(row.counts.table_edits), width: cols[3].width },
+          { text: String(email), width: cols[4].width },
+          { text: String(wa), width: cols[5].width },
+          { text: String(row.activity_count), width: cols[6].width },
+        ],
+        index,
       );
-    }
-    addRule();
+    });
+    addRule(ctx);
   }
 
-  // Full activity
-  addHeading("Full activity", 13);
+  addHeading(ctx, "Full activity log", 12);
   if (report.activities.length === 0) {
-    addBody("No tracked activity for this period.", { size: 9, color: [100, 100, 100] });
+    addBody(ctx, "No tracked activity for this period.", { size: 9, color: [100, 100, 100] });
   } else {
     report.activities.forEach((item, index) => {
-      ensureSpace(18);
-      addBody(`${index + 1}. ${item.title}`, { bold: true, size: 9 });
-      addBody(formatWhen(item.created_at), { size: 8, color: [110, 110, 110] });
+      addBody(ctx, `${index + 1}. ${item.title}`, { bold: true, size: 9 });
+      addBody(ctx, formatWhen(item.created_at), { size: 8, color: [110, 110, 110], indent: 2 });
       if (item.summary?.trim()) {
-        addBody(item.summary.trim(), { size: 8 });
+        addBody(ctx, item.summary.trim(), { size: 8, indent: 2 });
       }
       const who = item.full_name || item.username || `User #${item.user_id}`;
       const qty = item.quantity > 1 ? ` · qty ${item.quantity}` : "";
-      addBody(`${who}${qty}`, { size: 8, color: [90, 90, 90] });
-      y += 1;
+      addBody(ctx, `${who}${qty}`, { size: 8, color: [90, 90, 90], indent: 2 });
+      ctx.y += 1;
     });
   }
 
   const rangePart = safeFilenamePart(formatRange(report).replace(/\s+/g, ""));
   const scopePart = safeFilenamePart(scopeLabel);
   const periodPart = safeFilenamePart(periodLabel.toLowerCase());
-  doc.save(`kafi-kpi-${periodPart}-${rangePart}-${scopePart}.pdf`);
+  savePdf(ctx, `kafi-kpi-automatic-${periodPart}-${rangePart}-${scopePart}.pdf`);
 }

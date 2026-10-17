@@ -388,28 +388,6 @@ class WhatsAppPersonalTemplateRead(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-
-class TelegramPersonalTemplateCreate(BaseModel):
-    name: str = Field(min_length=1, max_length=255)
-    body: str = Field(min_length=1, max_length=4096)
-
-
-class TelegramPersonalTemplateUpdate(BaseModel):
-    name: Optional[str] = Field(default=None, min_length=1, max_length=255)
-    body: Optional[str] = Field(default=None, min_length=1, max_length=4096)
-
-
-class TelegramPersonalTemplateRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    name: str
-    body: str
-    created_by_user_id: Optional[int] = None
-    created_at: datetime
-    updated_at: datetime
-
-
 class EmailTemplateRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -1171,6 +1149,7 @@ class VoiceTokenRead(BaseModel):
 class CallInitiateRequest(BaseModel):
     contact_id: Optional[int] = None
     phone: Optional[str] = None
+    dial_section: Optional[str] = None
 
 
 class ManualCallRequest(BaseModel):
@@ -1362,6 +1341,7 @@ class InboxThreadSummary(BaseModel):
     latest_from_email: Optional[str] = None
     latest_from_name: Optional[str] = None
     has_attachments: bool = False
+    in_junk: bool = False
     provider: Optional[str] = None
     triage_category: Optional[str] = None
     triage_label: Optional[str] = None
@@ -1516,6 +1496,8 @@ class KpiUserBrief(BaseModel):
 
 class KpiCounts(BaseModel):
     calls_logged: int = 0
+    calls_manual: int = 0
+    calls_follow_up_clients: int = 0
     companies_called: int = 0
     outcomes_interested: int = 0
     outcomes_follow_up: int = 0
@@ -1584,6 +1566,8 @@ class KpiSummaryRequest(BaseModel):
     date: date
     period: str = "day"
     user_id: Optional[int] = None
+    date_from: Optional[date] = None
+    date_to: Optional[date] = None
 
 
 class KpiSummaryResponse(BaseModel):

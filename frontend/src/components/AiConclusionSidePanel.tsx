@@ -5,7 +5,6 @@ const ALL_MODES = [
   { id: "calls", label: "Call" },
   { id: "whatsapp", label: "WhatsApp" },
   { id: "emails", label: "Email" },
-  { id: "telegram", label: "Telegram" },
 ] as const;
 
 function modeActive(item: AiConclusionItem | null, id: string): boolean {

@@ -83,6 +83,11 @@ def _is_sent_folder_name(folder: str | None) -> bool:
     return "sent" in name.split(".") or "sent" in name.split("/")
 
 
+def is_junk_folder_name(folder: str | None) -> bool:
+    name = (folder or "").strip().lower().replace("\\", "/")
+    return "junk" in name or "spam" in name
+
+
 def _is_inbound_message(message: dict[str, Any], mailbox_email: str | None) -> bool:
     if _is_sent_folder_name(message.get("folder")):
         return False
@@ -133,6 +138,7 @@ def group_messages_into_threads(
         if mid and mid not in by_msgid:
             by_msgid[mid] = row["key"]
 
+    header_linked: set[str] = set()
     for row in enriched:
         key = row["key"]
         related: list[str] = []
@@ -141,14 +147,31 @@ def group_messages_into_threads(
         related.extend(row["norm_references"])
         for mid in related:
             other = by_msgid.get(mid)
-            if other:
+            if other and other != key:
                 union(key, other)
+                header_linked.add(key)
+                header_linked.add(other)
 
-    subject_buckets: dict[str, list[str]] = {}
+    # Subject + the other party only when reply headers did not find a parent.
+    # Join those onto an existing header thread with the same subject, otherwise
+    # group them with each other (bulk sends that never stored a Message-ID).
+    subject_roots: dict[str, str] = {}
     for row in enriched:
+        if row["key"] not in header_linked:
+            continue
         fb = _subject_fallback_key(row, mailbox_email)
-        subject_buckets.setdefault(fb, []).append(row["key"])
-    for keys in subject_buckets.values():
+        subject_roots.setdefault(fb, find(row["key"]))
+    loose: dict[str, list[str]] = {}
+    for row in enriched:
+        if row["key"] in header_linked:
+            continue
+        fb = _subject_fallback_key(row, mailbox_email)
+        existing = subject_roots.get(fb)
+        if existing:
+            union(row["key"], existing)
+            continue
+        loose.setdefault(fb, []).append(row["key"])
+    for keys in loose.values():
         root = keys[0]
         for other in keys[1:]:
             union(root, other)
@@ -161,7 +184,6 @@ def group_messages_into_threads(
     threads: list[dict[str, Any]] = []
     for members in clusters.values():
         members_sorted = sorted(members, key=lambda m: date_sort_key(m.get("date")))
-        latest = members_sorted[-1]
         earliest = members_sorted[0]
         inbound = [m for m in members_sorted if _is_inbound_message(m, mailbox_email)]
         anchor = inbound[0] if inbound else earliest
@@ -182,17 +204,21 @@ def group_messages_into_threads(
             unread_count = sum(1 for m in members_sorted if m.get("unread"))
         has_attachments = any(m.get("has_attachments") for m in members_sorted)
 
-        # Stable id from first *received* message so Inbox list ↔ open-thread match
-        # even when Sent copies are merged later for conversation view.
-        root_mid = anchor.get("norm_message_id")
-        if not root_mid:
-            for m in inbound or members_sorted:
-                if m.get("norm_message_id") and not m.get("norm_in_reply_to"):
-                    root_mid = m["norm_message_id"]
-                    break
-        if not root_mid:
-            root_mid = _subject_fallback_key(anchor, mailbox_email)
+        # Stable id from the earliest root (the message that is not itself a reply)
+        # so Inbox, Sent, and Junk scans open the same conversation.
+        id_anchor = earliest
+        for candidate in members_sorted:
+            if not candidate.get("norm_in_reply_to"):
+                id_anchor = candidate
+                break
+        root_mid = id_anchor.get("norm_message_id") or _subject_fallback_key(
+            id_anchor, mailbox_email
+        )
         thread_id = hashlib.sha1(str(root_mid).encode("utf-8")).hexdigest()[:20]
+        latest_inbound = inbound[-1] if inbound else None
+        in_junk = bool(
+            latest_inbound and is_junk_folder_name(latest_inbound.get("folder"))
+        )
 
         raw_subject = anchor.get("subject") or "(no subject)"
         cleaned_subject = _SUBJECT_PREFIX_RE.sub("", raw_subject).strip() or raw_subject
@@ -209,6 +235,7 @@ def group_messages_into_threads(
                 "latest_from_email": display_latest.get("from_email"),
                 "latest_from_name": display_latest.get("from_name"),
                 "has_attachments": has_attachments,
+                "in_junk": in_junk,
                 "message_keys": [m["key"] for m in members_sorted],
                 "messages": members_sorted,
             }

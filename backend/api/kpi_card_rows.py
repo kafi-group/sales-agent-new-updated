@@ -22,7 +22,9 @@ router = APIRouter(prefix="/kpi", tags=["kpi"])
 def get_kpi_card_rows(
     card: str = Query(..., description="KPI box key, e.g. bulk_whatsapp_sent"),
     report_date: date = Query(..., alias="date"),
-    period: str = Query("day", description="day | week | month"),
+    period: str = Query("day", description="day | week | month | custom"),
+    date_from: date | None = Query(None, description="Custom period: inclusive start"),
+    date_to: date | None = Query(None, description="Custom period: inclusive end"),
     user_id: int | None = Query(None, description="Admin only: one user. Omit for the team."),
     db: Session = Depends(get_db),
     user: AppUser = Depends(get_current_user),
@@ -35,6 +37,8 @@ def get_kpi_card_rows(
             viewer=user,
             user_id=user_id,
             period=period,
+            date_from=date_from,
+            date_to=date_to,
         )
     except ValueError as exc:
         raise HTTPException(404, str(exc)) from exc

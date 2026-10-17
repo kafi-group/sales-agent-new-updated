@@ -66,7 +66,12 @@ interface TwilioVoiceContextValue {
   /** When true the global PostCallRemarksModal is suppressed (bulk queue handles it). */
   bulkModeActive: boolean;
   setBulkModeActive: (active: boolean) => void;
-  placeCall: (leadId: number, contactId?: number, phone?: string) => Promise<CallInitiateResult>;
+  placeCall: (
+    leadId: number,
+    contactId?: number,
+    phone?: string,
+    dialSection?: string,
+  ) => Promise<CallInitiateResult>;
   placeManualCall: (
     phone: string,
     options?: { contactName?: string; country?: string },
@@ -648,7 +653,7 @@ export function TwilioVoiceProvider({ children }: { children: ReactNode }) {
   );
 
   const placeCall = useCallback(
-    (leadId: number, contactId?: number, phone?: string) =>
+    (leadId: number, contactId?: number, phone?: string, dialSection?: string) =>
       withDialLock(async (isCancelled) => {
         // Start mic + device registration immediately (same click) before the slow
         // prepare API — otherwise Chrome drops the user-gesture and getUserMedia fails.
@@ -660,6 +665,7 @@ export function TwilioVoiceProvider({ children }: { children: ReactNode }) {
         const prep = await client.initiateLeadCall(leadId, {
           contact_id: contactId,
           phone: phone?.trim() || undefined,
+          dial_section: dialSection?.trim() || undefined,
         });
         if (isCancelled()) {
           throw new Error("The server was too slow, so nothing was dialed. Please try again.");

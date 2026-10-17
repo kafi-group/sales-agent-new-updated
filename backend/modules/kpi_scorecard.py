@@ -35,6 +35,8 @@ DEFAULT_BANDS = {"A+": 100.0, "A": 90.0, "B+": 80.0, "B": 70.0, "C": 50.0}
 # (key in the KPI counts, label shown to the admin)
 AUTO_METRICS: list[tuple[str, str]] = [
     ("calls_logged", "Calls attempted"),
+    ("calls_manual", "Manual calls"),
+    ("calls_follow_up_clients", "Follow up clients calls"),
     ("companies_called", "Companies called"),
     ("outcomes_follow_up", "Calls picked up"),
     ("outcomes_interested", "Client interested"),
@@ -331,11 +333,18 @@ def compute_scorecard(
     period: str = "day",
     user_id: int | None = None,
     today: date | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
 ) -> dict[str, Any]:
     config = get_config()
     bands = config["grade_bands"]
     normalized = activity_module._normalize_period(period)  # noqa: SLF001
-    start_date, end_date, start_utc, end_utc = activity_module.period_bounds(report_date, normalized)
+    start_date, end_date, start_utc, end_utc = activity_module.period_bounds(
+        report_date,
+        normalized,
+        date_from=date_from,
+        date_to=date_to,
+    )
     today = today or datetime.now(activity_module.KPI_TIMEZONE).date()
     days = working_days_elapsed(start_date, end_date, today, set(config["working_days"]))
 

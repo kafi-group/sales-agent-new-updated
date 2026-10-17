@@ -10,7 +10,10 @@ from integrations.outlook_client import FOLDER_KEYS, outlook_client
 from modules.email_threads import (
     filter_messages_for_open_conversation,
     group_messages_into_threads,
+    is_junk_folder_name,
     message_key,
+    normalize_message_id,
+    normalize_subject,
 )
 from modules.inbox_cutoff import get_inbox_since, set_inbox_since_to_now
 from modules.mailbox_accounts import (
@@ -60,10 +63,17 @@ def _thread_belongs_in_inbox(
     *,
     mailbox_email: str | None,
 ) -> bool:
-    """Inbox list: only conversations with at least one *received* message."""
-    return any(
-        _message_is_inbound(msg, mailbox_email) for msg in (thread.get("messages") or [])
-    )
+    """Inbox list: a received message, including a Junk reply to something we sent.
+
+    Standalone Junk (newsletters, spam) stays in the Junk folder view.
+    """
+    messages = list(thread.get("messages") or [])
+    inbound = [msg for msg in messages if _message_is_inbound(msg, mailbox_email)]
+    if not inbound:
+        return False
+    if any(not is_junk_folder_name(msg.get("folder")) for msg in inbound):
+        return True
+    return any(not _message_is_inbound(msg, mailbox_email) for msg in messages)
 
 
 def _present_thread_for_inbox_list(
@@ -604,10 +614,29 @@ def _strip_thread_internals(thread: dict[str, Any]) -> dict[str, Any]:
         "latest_from_email": thread["latest_from_email"],
         "latest_from_name": thread["latest_from_name"],
         "has_attachments": thread["has_attachments"],
+        "in_junk": bool(thread.get("in_junk")),
         "provider": _mailbox_provider(),
         "triage_category": thread.get("triage_category"),
         "triage_label": thread.get("triage_label"),
     }
+
+
+def _angle_message_id(value: str | None) -> str | None:
+    raw = (value or "").strip()
+    if not raw:
+        return None
+    inner = raw.strip("<>").strip()
+    if not inner:
+        return None
+    return f"<{inner}>"
+
+
+def _scan_threads(user: AppUser, account) -> list[dict[str, Any]]:
+    """One fresh IMAP pass: INBOX + Sent + Junk, grouped into conversations."""
+    with use_mailbox(account, user_id=user.id):
+        raw = outlook_client.list_thread_source_messages(limit=200)
+    stamped = [{**message, "provider": _mailbox_provider()} for message in raw]
+    return group_messages_into_threads(stamped, mailbox_email=account.email)
 
 
 def list_threads(
@@ -622,64 +651,55 @@ def list_threads(
     account = resolve_user_mailbox(user)
     if not account:
         return {"items": [], "total": 0, "offset": offset, "limit": limit, "has_more": False}
-    # Inbox list source = INBOX only. Sent stays in Sent; replies join on open.
+    # INBOX + Sent + Junk so a reply joins the message that was sent.
+    # Labels stay as extra views and do not hide the conversation from Inbox.
     from modules.inbox_cutoff import date_sort_key
 
-    window = min(max((offset + limit) * 2, 50), 250)
-    with use_mailbox(account, user_id=user.id):
-        raw = outlook_client.list_messages(
-            limit=window,
-            offset=0,
-            unread_only=unread_only,
-            search_text=search_text,
-        )
-        stamped = [{**m, "provider": _mailbox_provider()} for m in raw]
-        threads = group_messages_into_threads(stamped, mailbox_email=account.email)
+    grouped = _scan_threads(user, account)
+    threads = [
+        _present_thread_for_inbox_list(t, mailbox_email=account.email)
+        for t in grouped
+        if _thread_belongs_in_inbox(t, mailbox_email=account.email)
+    ]
+    query = (search_text or "").strip().lower()
+    if query:
         threads = [
-            _present_thread_for_inbox_list(t, mailbox_email=account.email)
+            t
             for t in threads
-            if _thread_belongs_in_inbox(t, mailbox_email=account.email)
+            if query in str(t.get("subject") or "").lower()
+            or query in str(t.get("latest_preview") or "").lower()
+            or query in str(t.get("latest_from_email") or "").lower()
+            or query in str(t.get("latest_from_name") or "").lower()
+            or any(query in str(p).lower() for p in (t.get("participants") or []))
         ]
-        threads.sort(
-            key=lambda t: date_sort_key(t.get("latest_date")),
-            reverse=True,
-        )
-        if unread_only:
-            threads = [t for t in threads if t.get("unread_count", 0) > 0]
-        from modules import mail_labels as labels_module
-        from db.session import SessionLocal
+    threads.sort(
+        key=lambda t: date_sort_key(t.get("latest_date")),
+        reverse=True,
+    )
+    if unread_only:
+        threads = [t for t in threads if t.get("unread_count", 0) > 0]
+    from modules.inbox_triage import enrich_thread_with_triage
 
-        db = SessionLocal()
+    visible = [enrich_thread_with_triage(t) for t in threads]
+    triage_key = (triage_category or "").strip().lower()
+    if triage_key:
+        visible = [t for t in visible if (t.get("triage_category") or "") == triage_key]
+    total_estimate = len(visible)
+    if not search_text:
         try:
-            labels = labels_module.list_labels(db, user.id)
-            visible = [
-                t
-                for t in threads
-                if not labels_module.thread_matches_label_rules(t, labels)
-            ]
-        finally:
-            db.close()
-        from modules.inbox_triage import enrich_thread_with_triage
-
-        visible = [enrich_thread_with_triage(t) for t in visible]
-        triage_key = (triage_category or "").strip().lower()
-        if triage_key:
-            visible = [t for t in visible if (t.get("triage_category") or "") == triage_key]
-        total_estimate = len(visible)
-        if not search_text:
-            try:
+            with use_mailbox(account, user_id=user.id):
                 counts = outlook_client.folder_counts(limit=100)
-                total_estimate = int(counts.get("inbox", {}).get("count") or total_estimate)
-            except Exception:  # noqa: BLE001
-                pass
-        page = [_strip_thread_internals(t) for t in visible[offset : offset + limit]]
-        return {
-            "items": page,
-            "total": total_estimate,
-            "offset": offset,
-            "limit": limit,
-            "has_more": len(visible) > offset + limit or window < total_estimate,
-        }
+            total_estimate = int(counts.get("inbox", {}).get("count") or total_estimate)
+        except Exception:  # noqa: BLE001
+            pass
+    page = [_strip_thread_internals(t) for t in visible[offset : offset + limit]]
+    return {
+        "items": page,
+        "total": total_estimate,
+        "offset": offset,
+        "limit": limit,
+        "has_more": len(visible) > offset + limit,
+    }
 
 
 def get_thread(
@@ -689,49 +709,69 @@ def get_thread(
     if not account:
         return None
 
-    cached = _thread_cache_get(user, thread_id)
-    if cached and (not mark_seen or cached.get("unread_count", 0) == 0):
-        return cached
+    # Always rescan. A cached snapshot hid replies that arrived after the last open.
+    threads = _scan_threads(user, account)
+    match = next((t for t in threads if t["thread_id"] == thread_id), None)
+    if not match:
+        return None
+    return _materialize_thread(user, account, match, mark_seen=mark_seen)
 
+
+def find_thread_for_message(
+    user: AppUser,
+    *,
+    folder: str,
+    uid: str,
+    message_id: str | None = None,
+    subject: str | None = None,
+) -> dict[str, Any] | None:
+    """Open the conversation that contains this mailbox message (Sent or Inbox)."""
+    account = resolve_user_mailbox(user)
+    if not account:
+        return None
+    threads = _scan_threads(user, account)
+    want = message_key({"folder": folder or "INBOX", "uid": uid})
+    mid = normalize_message_id(message_id)
+    match = None
+    for thread in threads:
+        for msg in thread.get("messages") or []:
+            if message_key(msg) == want:
+                match = thread
+                break
+            if mid and normalize_message_id(msg.get("message_id")) == mid:
+                match = thread
+                break
+        if match:
+            break
+    if not match and subject:
+        wanted_subject = normalize_subject(subject)
+        for thread in threads:
+            if normalize_subject(thread.get("subject")) != wanted_subject:
+                continue
+            if any(
+                message_key(msg) == want or (mid and normalize_message_id(msg.get("message_id")) == mid)
+                for msg in (thread.get("messages") or [])
+            ):
+                match = thread
+                break
+        if not match:
+            for thread in threads:
+                if normalize_subject(thread.get("subject")) == wanted_subject:
+                    match = thread
+                    break
+    if not match:
+        return None
+    return _materialize_thread(user, account, match, mark_seen=True)
+
+
+def _materialize_thread(
+    user: AppUser,
+    account,
+    match: dict[str, Any],
+    *,
+    mark_seen: bool,
+) -> dict[str, Any] | None:
     with use_mailbox(account, user_id=user.id):
-        raw = outlook_client.list_conversation_messages(limit=120, unread_only=False)
-        stamped = [{**m, "provider": _mailbox_provider()} for m in raw]
-        threads = group_messages_into_threads(stamped, mailbox_email=account.email)
-        match = next((t for t in threads if t["thread_id"] == thread_id), None)
-        if not match:
-            # Same window as list_threads so bounce/daemon mail on page 1 still resolves.
-            inbox_only = outlook_client.list_messages(limit=250, unread_only=False)
-            inbox_stamped = [{**m, "provider": _mailbox_provider()} for m in inbox_only]
-            inbox_threads = group_messages_into_threads(
-                inbox_stamped,
-                mailbox_email=account.email,
-            )
-            match = next((t for t in inbox_threads if t["thread_id"] == thread_id), None)
-            if match:
-                # Re-find in conversation merge by shared inbound message id / subject.
-                inbound_keys = {
-                    message_key(m)
-                    for m in (match.get("messages") or [])
-                    if _message_is_inbound(m, account.email)
-                }
-                for t in threads:
-                    keys = set(t.get("message_keys") or [])
-                    if inbound_keys & keys:
-                        match = t
-                        break
-            if not match:
-                # Last resort: solo-group each recent inbox message (bounce Message-IDs
-                # often don't match conversation merges used on open).
-                for msg in inbox_stamped:
-                    solo = group_messages_into_threads(
-                        [msg], mailbox_email=account.email
-                    )
-                    if solo and solo[0].get("thread_id") == thread_id:
-                        match = solo[0]
-                        break
-        if not match:
-            return None
-
         details = outlook_client.get_messages_by_keys(match["message_keys"])
         detail_by_key = {
             message_key(m): {**m, "provider": _mailbox_provider()} for m in details
@@ -778,7 +818,7 @@ def get_thread(
         )
         summary["message_count"] = len(ordered)
         summary["messages"] = ordered
-        _thread_cache_set(user, thread_id, summary)
+        _thread_cache_set(user, str(match.get("thread_id") or ""), summary)
         return summary
 
 
@@ -1284,6 +1324,9 @@ def reply(
             subject=reply_subject,
             body=send_body,
         )
+        parent_id = _angle_message_id(original.get("message_id"))
+        prior_refs = (original.get("references") or "").strip()
+        references = " ".join(part for part in (prior_refs, parent_id or "") if part) or None
         result = outlook_client.send_reply(
             to=recipient,
             subject=reply_subject,
@@ -1293,6 +1336,8 @@ def reply(
             attachments=attachments,
             interaction_id=track_interaction_id,
             send_mode="individual",
+            in_reply_to=parent_id,
+            references=references,
         )
 
         if result.get("status") == "sent":
@@ -1433,6 +1478,9 @@ def append_sent_copy(
     cc: str | None = None,
     bcc: str | None = None,
     html: bool = True,
+    message_id: str | None = None,
+    in_reply_to: str | None = None,
+    references: str | None = None,
 ) -> dict[str, Any]:
     """IMAP APPEND a Sent copy for a message already delivered via Vercel SMTP.
 
@@ -1470,7 +1518,15 @@ def append_sent_copy(
         message["Bcc"] = bcc_clean
     message["Subject"] = subject_clean
     message["Date"] = email_utils.formatdate(localtime=True)
-    message["Message-ID"] = email_utils.make_msgid(domain=from_addr.split("@")[-1])
+    stored_id = _angle_message_id(message_id) or email_utils.make_msgid(
+        domain=from_addr.split("@")[-1]
+    )
+    message["Message-ID"] = stored_id
+    reply_parent = _angle_message_id(in_reply_to)
+    if reply_parent:
+        message["In-Reply-To"] = reply_parent
+    if (references or "").strip() or reply_parent:
+        message["References"] = (references or reply_parent or "").strip()
     from modules import email_tracking
 
     plain_body, html_body = email_tracking.build_tracked_bodies(

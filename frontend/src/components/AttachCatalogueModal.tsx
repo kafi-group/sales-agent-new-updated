@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { client, type CatalogueItem, type EmailAttachment } from "../api/client";
+import {
+  client,
+  EMAIL_ATTACHMENT_MAX_BYTES,
+  type CatalogueItem,
+  type EmailAttachment,
+} from "../api/client";
 import { IconBookOpen, IconPaperclip, IconX } from "./icons/AppIcons";
 
 interface AttachCatalogueModalProps {
@@ -69,18 +74,29 @@ export function AttachCatalogueModal({
 
       if (selectedCats.length > 0) {
         const attachable = catalogues.filter(
-          (c) => selectedCats.includes(c.id) && c.size > 0 && c.size <= 20 * 1024 * 1024,
+          (c) =>
+            selectedCats.includes(c.id) &&
+            c.size > 0 &&
+            c.size <= EMAIL_ATTACHMENT_MAX_BYTES,
         );
         const skipped = catalogues.filter(
-          (c) => selectedCats.includes(c.id) && (!c.size || c.size > 20 * 1024 * 1024),
+          (c) =>
+            selectedCats.includes(c.id) &&
+            (!c.size || c.size > EMAIL_ATTACHMENT_MAX_BYTES),
         );
         if (attachable.length > 0) {
           const catAtts = await client.attachCatalogues(attachable.map((c) => c.id));
+          if (catAtts.length === 0) {
+            throw new Error(
+              "Catalogue PDF could not be attached (missing on server or over the 10 MB email limit). " +
+                "Compress the PDF under Catalogues, then try again.",
+            );
+          }
           added.push(...catAtts);
         }
         if (skipped.length > 0) {
           onError(
-            `${skipped.map((c) => c.title).join(", ")} ${skipped.length === 1 ? "is" : "are"} too large to attach (mailbox ~25 MB). Share the Catalogue download link instead.`,
+            `${skipped.map((c) => c.title).join(", ")} ${skipped.length === 1 ? "is" : "are"} too large to attach (limit 10 MB). Share the Catalogue download link instead.`,
           );
         }
       }

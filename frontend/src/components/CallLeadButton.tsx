@@ -20,6 +20,8 @@ interface CallLeadButtonProps {
   onError: (message: string) => void;
   onSuccess?: (result: CallInitiateResult) => void;
   compact?: boolean;
+  /** Leads table section (e.g. interested_clients = Follow up clients) for KPI attribution. */
+  dialSection?: string;
 }
 
 export function CallLeadButton({
@@ -32,6 +34,7 @@ export function CallLeadButton({
   onError,
   onSuccess,
   compact = false,
+  dialSection,
 }: CallLeadButtonProps) {
   const { user } = useAuth();
   const voice = useTwilioVoiceOptional();
@@ -66,7 +69,7 @@ export function CallLeadButton({
 
     try {
       // placeCall re-inits the Device if needed — do not gate on stale `ready`.
-      const result = await voice.placeCall(leadId, contactId, targetPhone);
+      const result = await voice.placeCall(leadId, contactId, targetPhone, dialSection);
       onSuccess?.(result);
     } catch (e) {
       if (e instanceof Error && e.name === "DialCancelled") return; // user pressed End

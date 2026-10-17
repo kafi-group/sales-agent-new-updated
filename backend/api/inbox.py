@@ -298,6 +298,32 @@ def list_inbox_threads(
         raise HTTPException(502, _inbox_error_message(exc)) from exc
 
 
+@router.get("/threads/lookup", response_model=InboxThreadDetail)
+def lookup_inbox_thread(
+    folder: str = Query(default="INBOX", max_length=200),
+    uid: str = Query(min_length=1, max_length=80),
+    message_id: str | None = Query(default=None, max_length=500),
+    subject: str | None = Query(default=None, max_length=500),
+    mailbox_user_id: int | None = Query(default=None),
+    user: AppUser = Depends(get_current_user_released),
+):
+    """Resolve the full conversation for one mailbox message (used by Sent)."""
+    target = _mailbox_target(user, mailbox_user_id)
+    try:
+        thread = inbox_module.find_thread_for_message(
+            target,
+            folder=folder,
+            uid=uid,
+            message_id=message_id,
+            subject=subject,
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(502, _inbox_error_message(exc)) from exc
+    if not thread:
+        raise HTTPException(404, "Conversation not found")
+    return thread
+
+
 @router.get("/threads/{thread_id}", response_model=InboxThreadDetail)
 def get_inbox_thread(
     thread_id: str,

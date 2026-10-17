@@ -40,7 +40,6 @@ function EngagementTable({ item }: { item: AiConclusionItem }) {
     { label: "Calls", key: "calls" },
     { label: "Emails", key: "emails" },
     { label: "WhatsApp", key: "whatsapp" },
-    { label: "Telegram", key: "telegram" },
     { label: "Quotations", key: "quotations" },
     { label: "Follow-ups pending", key: "follow_ups_pending" },
   ];

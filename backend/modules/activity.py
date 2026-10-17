@@ -34,8 +34,14 @@ _OUTCOME_LABELS = {
     "closed_business": "Closed Business – Do Not Contact",
 }
 
+_FOLLOW_UP_CLIENT_SECTIONS = frozenset({"interested_clients", "follow_up_clients"})
+
+_MANUAL_DIAL_SOURCES = frozenset({"manual_dial", "manual"})
+
 _EMPTY_COUNTS = {
     "calls_logged": 0,
+    "calls_manual": 0,
+    "calls_follow_up_clients": 0,
     "companies_called": 0,
     "outcomes_interested": 0,
     "outcomes_follow_up": 0,
@@ -94,13 +100,24 @@ def day_bounds_utc(report_date: date) -> tuple[datetime, datetime]:
 def period_bounds(
     report_date: date,
     period: str,
+    *,
+    date_from: date | None = None,
+    date_to: date | None = None,
 ) -> tuple[date, date, datetime, datetime]:
     """Return (start_date, end_date_inclusive, start_utc, end_utc_exclusive).
 
     Weeks are Monday–Sunday (ISO). Months are calendar months.
+    Custom range uses ``date_from`` / ``date_to`` (inclusive, Asia/Karachi).
     """
-    normalized = (period or "day").strip().lower()
-    if normalized in {"week", "weekly"}:
+    normalized = _normalize_period(period)
+    if normalized == "custom":
+        if date_from is None or date_to is None:
+            raise ValueError("Custom period requires date_from and date_to")
+        start_date = date_from
+        end_date = date_to
+        if end_date < start_date:
+            raise ValueError("End date must be on or after start date")
+    elif normalized == "week":
         # Monday = 0 … Sunday = 6
         start_date = report_date - timedelta(days=report_date.weekday())
         end_date = start_date + timedelta(days=6)
@@ -131,6 +148,8 @@ def _normalize_period(period: str | None) -> str:
         return "week"
     if value in {"month", "monthly"}:
         return "month"
+    if value in {"custom", "range"}:
+        return "custom"
     return "day"
 
 
@@ -138,10 +157,77 @@ def _empty_counts() -> dict[str, int]:
     return dict(_EMPTY_COUNTS)
 
 
+def _is_manual_dial_details(details: dict) -> bool:
+    if details.get("manual_call") is True:
+        return True
+    return str(details.get("dial_source") or "").strip().lower() in _MANUAL_DIAL_SOURCES
+
+
+def _mark_manual_dial_events(db: Session, events: list[UserActivityEvent]) -> None:
+    """Tag dial-pad calls on in-memory events (for counts + drill-down), including older logs."""
+    from db.models import Interaction
+
+    interaction_ids: set[int] = set()
+    for event in events:
+        if event.activity_type != CALL_LOGGED:
+            continue
+        det = event.details or {}
+        if _is_manual_dial_details(det):
+            continue
+        if str(det.get("dial_section") or "").strip():
+            continue
+        i_id = det.get("interaction_id")
+        if not i_id and event.entity_type == "interaction" and event.entity_id:
+            i_id = event.entity_id
+        try:
+            if i_id is not None:
+                interaction_ids.add(int(i_id))
+        except (TypeError, ValueError):
+            pass
+
+    if not interaction_ids:
+        return
+
+    by_id = {
+        row.id: row
+        for row in db.query(Interaction).filter(Interaction.id.in_(interaction_ids)).all()
+    }
+    for event in events:
+        if event.activity_type != CALL_LOGGED:
+            continue
+        det = dict(event.details or {})
+        if _is_manual_dial_details(det) or str(det.get("dial_section") or "").strip():
+            continue
+        i_id = det.get("interaction_id")
+        if not i_id and event.entity_type == "interaction" and event.entity_id:
+            i_id = event.entity_id
+        try:
+            i_key = int(i_id) if i_id is not None else None
+        except (TypeError, ValueError):
+            i_key = None
+        inter = by_id.get(i_key) if i_key is not None else None
+        if not inter:
+            continue
+        subject = (inter.subject or "").strip()
+        content = inter.content or ""
+        if subject.startswith("Manual call") or "Manual outbound call" in content:
+            det["manual_call"] = True
+            det["dial_source"] = "manual_dial"
+            event.details = det
+
+
+def _follow_up_client_buyer_ids(db: Session) -> set[int]:
+    from modules.calls import buyer_ids_with_latest_call_outcome
+
+    return buyer_ids_with_latest_call_outcome(db, "follow_up")
+
+
 def _bump_counts(
     counts: dict[str, int],
     event: UserActivityEvent,
     companies_set: set[str] | None = None,
+    *,
+    follow_up_client_buyer_ids: set[int] | None = None,
 ) -> None:
     qty = max(1, int(event.quantity or 1))
     kind = event.activity_type
@@ -158,6 +244,23 @@ def _bump_counts(
         is_short_drop = bool(details.get("is_short_drop"))
         if not is_short_drop:
             counts["calls_logged"] += qty
+            if _is_manual_dial_details(details):
+                counts["calls_manual"] += qty
+            dial_section = str(details.get("dial_section") or "").strip()
+            buyer_id = details.get("buyer_id")
+            try:
+                buyer_int = int(buyer_id) if buyer_id is not None else None
+            except (TypeError, ValueError):
+                buyer_int = None
+            if dial_section in _FOLLOW_UP_CLIENT_SECTIONS:
+                counts["calls_follow_up_clients"] += qty
+            elif (
+                not dial_section
+                and buyer_int is not None
+                and follow_up_client_buyer_ids
+                and buyer_int in follow_up_client_buyer_ids
+            ):
+                counts["calls_follow_up_clients"] += qty
     elif kind == CALL_OUTCOME:
         outcome = details.get("outcome") or ""
         if outcome == "interested":
@@ -609,6 +712,7 @@ def get_kpi_counts_for_range(
         query = exclude_sandbox_actors(query, db, UserActivityEvent.user_id)
 
     events = _with_unmarked_answered_calls(db, query.all())
+    _mark_manual_dial_events(db, events)
     email_by_user = _email_send_counts_by_user(
         db,
         start_utc=start_utc,
@@ -629,10 +733,16 @@ def get_kpi_counts_for_range(
             email_by_user = {k: v for k, v in email_by_user.items() if k not in hidden}
             wa_by_user = {k: v for k, v in wa_by_user.items() if k not in hidden}
 
+    follow_up_ids = _follow_up_client_buyer_ids(db)
     counts = _empty_counts()
     target_companies: set[str] = set()
     for event in events:
-        _bump_counts(counts, event, target_companies)
+        _bump_counts(
+            counts,
+            event,
+            target_companies,
+            follow_up_client_buyer_ids=follow_up_ids,
+        )
     counts["companies_called"] = len(target_companies)
 
     if target_user_id is not None:
@@ -660,6 +770,8 @@ def get_kpi_report(
     viewer: AppUser,
     user_id: int | None = None,
     period: str = "day",
+    date_from: date | None = None,
+    date_to: date | None = None,
 ) -> dict[str, Any]:
     """Build a day/week/month activity report for one user or (admins) the whole team."""
     from sqlalchemy.orm import joinedload
@@ -678,7 +790,12 @@ def get_kpi_report(
         if not target or is_sandbox_user(target):
             raise ValueError("User not found")
 
-    start_date, end_date, start_utc, end_utc = period_bounds(report_date, normalized_period)
+    start_date, end_date, start_utc, end_utc = period_bounds(
+        report_date,
+        normalized_period,
+        date_from=date_from,
+        date_to=date_to,
+    )
     query = (
         db.query(UserActivityEvent)
         .filter(
@@ -693,6 +810,7 @@ def get_kpi_report(
         query = exclude_sandbox_actors(query, db, UserActivityEvent.user_id)
 
     events = _with_unmarked_answered_calls(db, query.all())
+    _mark_manual_dial_events(db, events)
     email_by_user = _email_send_counts_by_user(
         db,
         start_utc=start_utc,
@@ -720,10 +838,16 @@ def get_kpi_report(
         for u in db.query(AppUser).filter(AppUser.id.in_(user_ids)).all()
     } if user_ids else {}
 
+    follow_up_ids = _follow_up_client_buyer_ids(db)
     counts = _empty_counts()
     target_companies: set[str] = set()
     for event in events:
-        _bump_counts(counts, event, target_companies)
+        _bump_counts(
+            counts,
+            event,
+            target_companies,
+            follow_up_client_buyer_ids=follow_up_ids,
+        )
     counts["companies_called"] = len(target_companies)
 
     if target_user_id is not None:
@@ -803,7 +927,12 @@ def get_kpi_report(
                 }
                 by_user[event.user_id] = bucket
             c_set = user_companies.setdefault(event.user_id, set())
-            _bump_counts(bucket["counts"], event, c_set)
+            _bump_counts(
+                bucket["counts"],
+                event,
+                c_set,
+                follow_up_client_buyer_ids=follow_up_ids,
+            )
             bucket["activity_count"] += 1
         for uid, c_set in user_companies.items():
             if uid in by_user:
@@ -834,6 +963,24 @@ def get_kpi_report(
             by_user.values(),
             key=lambda row: ((row["user"] or {}).get("full_name") or "").lower(),
         )
+
+    for act in activities:
+        if act.get("activity_type") != CALL_LOGGED:
+            continue
+        det = dict(act.get("details") or {})
+        dial = str(det.get("dial_section") or "").strip()
+        bid = det.get("buyer_id")
+        try:
+            bid_int = int(bid) if bid is not None else None
+        except (TypeError, ValueError):
+            bid_int = None
+        if dial in _FOLLOW_UP_CLIENT_SECTIONS or (
+            not dial and bid_int is not None and bid_int in follow_up_ids
+        ):
+            det["follow_up_client_call"] = True
+        if _is_manual_dial_details(det):
+            det["manual_call"] = True
+        act["details"] = det
 
     return {
         "date": report_date.isoformat(),
@@ -869,6 +1016,8 @@ def get_daily_kpi(
 
 
 def _period_words(period: str, date_start: str, date_end: str) -> tuple[str, str]:
+    if period == "custom":
+        return "Custom", f"{date_start} to {date_end}"
     if period == "week":
         return "Weekly", f"{date_start} to {date_end}"
     if period == "month":
@@ -1149,6 +1298,8 @@ def generate_kpi_summary(
     viewer: AppUser,
     user_id: int | None = None,
     period: str = "day",
+    date_from: date | None = None,
+    date_to: date | None = None,
 ) -> dict[str, Any]:
     """Build KPI report + narrative summary (KPI_GEMINI_API_KEY when set, else rules)."""
     from pathlib import Path
@@ -1159,6 +1310,8 @@ def generate_kpi_summary(
         viewer=viewer,
         user_id=user_id,
         period=period,
+        date_from=date_from,
+        date_to=date_to,
     )
     fallback = _build_rule_based_summary(report)
     source = "rules"

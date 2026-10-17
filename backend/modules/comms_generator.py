@@ -12,7 +12,7 @@ from db.models import (
     InteractionStatus,
 )
 from integrations.mail_client import mail_client
-from integrations.whatsapp_client import whatsapp_client
+from integrations.whatsapp_client import user_facing_whatsapp_error, whatsapp_client
 from modules.email_attachments import (
     copy_attachments,
     merge_attachments,
@@ -933,7 +933,7 @@ class CommsGenerator:
             return None
         interaction.wa_status = status
         if status == "failed" and error_message:
-            raw_err = (error_message or "").strip()
+            raw_err = user_facing_whatsapp_error((error_message or "").strip())
             lower = raw_err.lower()
             if "re-engagement" in lower or "131047" in lower or "24 hour" in lower:
                 mismatch = whatsapp_phone_number_id_mismatch()
@@ -1507,7 +1507,7 @@ class CommsGenerator:
                 timeout_seconds=12.0 if record_activity else 2.0,
             )
             if (draft.wa_status or "").lower() == "failed":
-                err = (
+                err = user_facing_whatsapp_error(
                     whatsapp_send_error(draft.attachments)
                     or "WhatsApp delivery failed after Meta accepted the message"
                 )
@@ -1533,7 +1533,9 @@ class CommsGenerator:
                 {
                     "type": "whatsapp_send",
                     "to": phone,
-                    "last_send_error": send_result.get("message") or "WhatsApp send failed",
+                    "last_send_error": user_facing_whatsapp_error(
+                        send_result.get("message") or "WhatsApp send failed"
+                    ),
                 }
             )
             draft.attachments = atts

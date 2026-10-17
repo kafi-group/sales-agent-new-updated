@@ -666,12 +666,19 @@ def get_card_rows(
     viewer: AppUser,
     user_id: int | None = None,
     period: str = "day",
+    date_from: date | None = None,
+    date_to: date | None = None,
 ) -> list[dict[str, Any]]:
     if card not in SUPPORTED_CARDS:
         raise ValueError("This box does not have a per-contact list")
     target_user_id = _scope(db, viewer, user_id)
     normalized = activity_module._normalize_period(period)  # noqa: SLF001
-    _, _, start_utc, end_utc = activity_module.period_bounds(report_date, normalized)
+    _, _, start_utc, end_utc = activity_module.period_bounds(
+        report_date,
+        normalized,
+        date_from=date_from,
+        date_to=date_to,
+    )
     users = {u.id: u for u in db.query(AppUser).all()}
 
     common = {

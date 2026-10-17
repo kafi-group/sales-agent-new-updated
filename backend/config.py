@@ -223,11 +223,6 @@ class Settings(BaseSettings):
     whatsapp_bridge_secret: str | None = "4ce746274829595960813f40c4ee4c355b351b5ee41fc83f"
     whatsapp_bridge_session_prefix: str = "kafi-sales-agent"
 
-    # Telegram Mobile bridge (user account via MTProto — not Bot API)
-    telegram_bridge_url: str | None = None
-    telegram_bridge_secret: str | None = None
-    telegram_bridge_session_prefix: str = "kafi-telegram"
-
     # Read-only dashboard bridge for bank-recon / PA (x-bridge-secret header).
     agent_bridge_secret: str | None = None
 

@@ -1,13 +1,9 @@
-import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import { useState } from "react";
 import type { LeadTableRow } from "../api/client";
 import { CallPhonePicker } from "./CallPhonePicker";
 import { openMailerComposeForLead } from "./EmailLeadButton";
 import { ToolbarDropdown, ToolbarMenuItem } from "./ui/ToolbarDropdown";
-import { IconMail, IconPhone, IconTelegram, IconWhatsApp, IconX } from "./icons/AppIcons";
-
-export type WhatsAppComposeMode = "personal" | "template";
-export type TelegramComposeMode = "message" | "template";
+import { IconMail, IconPhone, IconWhatsApp } from "./icons/AppIcons";
 
 interface PhoneOption {
   label: string;
@@ -25,7 +21,6 @@ interface SelectedContactQuickActionsProps {
   onError: (message: string) => void;
   /** Opens the same Bulk WhatsApp Message flow as Action → WhatsApp. */
   onWhatsApp: () => void;
-  onTelegram?: (phone: string, mode?: TelegramComposeMode) => void;
 }
 
 function uniquePhones(row: LeadTableRow): PhoneOption[] {
@@ -64,101 +59,15 @@ function uniqueEmails(row: LeadTableRow): EmailOption[] {
   return out;
 }
 
-function TelegramPhonePicker({
-  companyName,
-  mode,
-  phones,
-  onClose,
-  onPick,
-}: {
-  companyName: string;
-  mode: TelegramComposeMode;
-  phones: PhoneOption[];
-  onClose: () => void;
-  onPick: (phone: string) => void;
-}) {
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[95] flex items-center justify-center p-4 bg-black/60"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div
-        role="dialog"
-        aria-labelledby="tg-phone-picker-title"
-        className="w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 shadow-2xl p-5 space-y-4"
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h3 id="tg-phone-picker-title" className="text-base font-medium text-slate-100">
-              Choose Telegram number
-            </h3>
-            <p className="text-sm text-slate-400 mt-1">
-              {companyName} · {mode === "template" ? "Template" : "Message"}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
-            aria-label="Close"
-          >
-            <IconX size="sm" />
-          </button>
-        </div>
-        <ul className="space-y-2">
-          {phones.map((p) => (
-            <li key={p.phone}>
-              <button
-                type="button"
-                onClick={() => onPick(p.phone)}
-                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-left hover:border-sky-500/50 hover:bg-slate-900"
-              >
-                <span className="block text-sm font-medium text-slate-100">{p.label}</span>
-                <span className="block text-xs font-mono text-slate-400 mt-0.5">{p.phone}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>,
-    document.body,
-  );
-}
-
 export function SelectedContactQuickActions({
   row,
   disabled = false,
   onError,
   onWhatsApp,
-  onTelegram,
 }: SelectedContactQuickActionsProps) {
   const phones = uniquePhones(row);
   const emails = uniqueEmails(row);
   const [showCallPicker, setShowCallPicker] = useState(false);
-  const [tgPhonePick, setTgPhonePick] = useState<TelegramComposeMode | null>(null);
-
-  function startTelegram(mode: TelegramComposeMode = "message") {
-    if (!onTelegram) return;
-    if (phones.length === 0) {
-      onError("This contact has no phone number for Telegram.");
-      return;
-    }
-    if (phones.length === 1) {
-      onTelegram(phones[0].phone, mode);
-      return;
-    }
-    setTgPhonePick(mode);
-  }
 
   return (
     <>
@@ -206,29 +115,6 @@ export function SelectedContactQuickActions({
           WhatsApp
         </button>
 
-        {onTelegram ? (
-          <ToolbarDropdown label="Telegram" icon={IconTelegram} variant="sky">
-            <ToolbarMenuItem
-              icon={IconTelegram}
-              tone="sky"
-              disabled={disabled || phones.length === 0}
-              title="Send via your connected Telegram Mobile"
-              onClick={() => startTelegram("message")}
-            >
-              Telegram message
-            </ToolbarMenuItem>
-            <ToolbarMenuItem
-              icon={IconTelegram}
-              tone="sky"
-              disabled={disabled || phones.length === 0}
-              title="Send a saved Telegram template"
-              onClick={() => startTelegram("template")}
-            >
-              Telegram template
-            </ToolbarMenuItem>
-          </ToolbarDropdown>
-        ) : null}
-
         <ToolbarDropdown label="Email" icon={IconMail} variant="sky">
           {emails.length === 0 ? (
             <ToolbarMenuItem disabled title="No email on file" onClick={() => undefined}>
@@ -263,20 +149,6 @@ export function SelectedContactQuickActions({
           }))}
           onClose={() => setShowCallPicker(false)}
           onError={onError}
-        />
-      ) : null}
-
-      {tgPhonePick && onTelegram ? (
-        <TelegramPhonePicker
-          companyName={row.company_name || "Contact"}
-          mode={tgPhonePick}
-          phones={phones}
-          onClose={() => setTgPhonePick(null)}
-          onPick={(phone) => {
-            const mode = tgPhonePick;
-            setTgPhonePick(null);
-            onTelegram(phone, mode);
-          }}
         />
       ) : null}
     </>

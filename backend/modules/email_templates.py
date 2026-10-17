@@ -44,10 +44,11 @@ def _normalize_placeholder_key(raw: str) -> str | None:
 
 
 def render_template_text(text: str, *, buyer: Buyer, contact: Contact) -> str:
-    """Replace [placeholder] and {{placeholder}} tokens (incl. [Company Name])."""
+    """Replace merge tokens: {{x}}, {x}, [x], and common typos like [x) / (x]."""
+    contact_display = (contact.full_name or "").strip() or (buyer.company_name or "").strip() or "Sir/Madam"
     values = {
         "company_name": buyer.company_name or "",
-        "contact_name": contact.full_name or "Sir/Madam",
+        "contact_name": contact_display,
         "country": buyer.country or "your market",
         "industry": buyer.industry or "",
         "designation": contact.designation or "",
@@ -55,20 +56,20 @@ def render_template_text(text: str, *, buyer: Buyer, contact: Contact) -> str:
         "email": contact.email or "",
     }
 
-    def _replace_brace(match: re.Match[str]) -> str:
+    def _replace(match: re.Match[str]) -> str:
         canonical = _normalize_placeholder_key(match.group(1))
         if not canonical:
             return match.group(0)
         return values.get(canonical, "")
 
-    def _replace_bracket(match: re.Match[str]) -> str:
-        canonical = _normalize_placeholder_key(match.group(1))
-        if not canonical:
-            return match.group(0)
-        return values.get(canonical, "")
-
-    rendered = re.sub(r"\{\{\s*([^}]+?)\s*\}\}", _replace_brace, text or "")
-    rendered = re.sub(r"\[([^\]]+)\]", _replace_bracket, rendered)
+    rendered = text or ""
+    # Double braces first so {{contact_name}} is not eaten by the single-brace pass.
+    rendered = re.sub(r"\{\{\s*([^}]+?)\s*\}\}", _replace, rendered)
+    rendered = re.sub(r"\{([^{}]{1,64})\}", _replace, rendered)
+    rendered = re.sub(r"\[([^\]]+)\]", _replace, rendered)
+    # Typo forms that otherwise leave literal text in the inbox (e.g. [contact_name)).
+    rendered = re.sub(r"\[([^\])\]]{1,64})\)", _replace, rendered)
+    rendered = re.sub(r"\(([^\])\]]{1,64})\]", _replace, rendered)
     return rendered
 
 

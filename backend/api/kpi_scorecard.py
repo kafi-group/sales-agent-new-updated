@@ -58,14 +58,22 @@ def _config_payload(db: Session) -> dict[str, Any]:
 @router.get("/scorecard")
 def get_scorecard(
     report_date: date = Query(..., alias="date"),
-    period: str = Query("day", description="day | week | month"),
+    period: str = Query("day", description="day | week | month | custom"),
+    date_from: date | None = Query(None, description="Custom period: inclusive start"),
+    date_to: date | None = Query(None, description="Custom period: inclusive end"),
     user_id: int | None = Query(None, description="Admin only: one user. Omit for the team."),
     db: Session = Depends(get_db),
     user: AppUser = Depends(get_current_user),
 ):
     try:
         return scorecard.compute_scorecard(
-            db, viewer=user, report_date=report_date, period=period, user_id=user_id
+            db,
+            viewer=user,
+            report_date=report_date,
+            period=period,
+            user_id=user_id,
+            date_from=date_from,
+            date_to=date_to,
         )
     except ValueError as exc:
         raise HTTPException(404, str(exc)) from exc

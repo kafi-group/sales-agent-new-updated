@@ -5,6 +5,7 @@ import {
   type ManualKpiEntry,
   type ManualKpiPeriod,
 } from "../api/client";
+import { exportManualKpiReportPdf, manualKpiPeriodLabel } from "../utils/exportManualKpiPdf";
 
 interface ManualKpiSectionProps {
   anchorDate: string;
@@ -18,7 +19,17 @@ const MANUAL_PERIOD_OPTIONS: { value: ManualKpiPeriod; label: string }[] = [
   { value: "week", label: "Weekly" },
   { value: "month", label: "Monthly" },
   { value: "year", label: "Yearly" },
+  { value: "custom", label: "Custom" },
 ];
+
+function todayInKarachi(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Karachi" }).format(new Date());
+}
+
+function startOfMonthKarachi(fromDate?: string): string {
+  const base = fromDate || todayInKarachi();
+  return `${base.slice(0, 7)}-01`;
+}
 
 const CONTACT_TYPES = ["Phone", "Call", "WhatsApp", "Email", "No"];
 const FOLLOW_UP_TYPES = ["Email", "WhatsApp", "Call", "No"];
@@ -38,6 +49,8 @@ export function ManualKpiSection({
   onError,
 }: ManualKpiSectionProps) {
   const [period, setPeriod] = useState<ManualKpiPeriod>("month");
+  const [customDateFrom, setCustomDateFrom] = useState(() => startOfMonthKarachi(anchorDate));
+  const [customDateTo, setCustomDateTo] = useState(anchorDate);
   const [userFilter, setUserFilter] = useState("");
   const [rows, setRows] = useState<DraftRow[]>([]);
   const [rangeLabel, setRangeLabel] = useState("");
@@ -46,13 +59,16 @@ export function ManualKpiSection({
   const [savingId, setSavingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
+  const [pdfExporting, setPdfExporting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const result = await client.listManualKpi({
-        date: anchorDate,
+        date: period === "custom" ? customDateFrom : anchorDate,
         period,
+        date_from: period === "custom" ? customDateFrom : undefined,
+        date_to: period === "custom" ? customDateTo : undefined,
         user_id: isAdmin && userFilter ? Number(userFilter) : undefined,
       });
       setRows(result.items);
@@ -63,7 +79,7 @@ export function ManualKpiSection({
     } finally {
       setLoading(false);
     }
-  }, [anchorDate, isAdmin, onError, period, userFilter]);
+  }, [anchorDate, customDateFrom, customDateTo, isAdmin, onError, period, userFilter]);
 
   useEffect(() => {
     void load();
@@ -118,7 +134,7 @@ export function ManualKpiSection({
     setAdding(true);
     try {
       const created = await client.createManualKpi({
-        activity_date: anchorDate,
+        activity_date: period === "custom" ? customDateTo : anchorDate,
         wechat_contacts: "No",
       });
       setRows((prev) => [created, ...prev]);
@@ -204,6 +220,49 @@ export function ManualKpiSection({
   const inputClass =
     "w-full min-w-0 rounded border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm text-slate-100";
 
+  const summaryDateLabel =
+    period === "custom"
+      ? formatRange(customDateFrom, customDateTo, "custom")
+      : rangeLabel || anchorDate;
+
+  function onPeriodChange(next: ManualKpiPeriod) {
+    if (next === "custom") {
+      const today = todayInKarachi();
+      setCustomDateFrom(startOfMonthKarachi(today));
+      setCustomDateTo(today);
+    }
+    setPeriod(next);
+  }
+
+  const manualScopeLabel =
+    isAdmin && userFilter
+      ? assignees.find((u) => String(u.id) === userFilter)?.full_name ||
+        assignees.find((u) => String(u.id) === userFilter)?.username ||
+        "Selected user"
+      : isAdmin
+        ? "All users (team log)"
+        : "My log";
+
+  function exportManualPdf() {
+    setPdfExporting(true);
+    try {
+      exportManualKpiReportPdf({
+        rows,
+        total,
+        summary: summaryMetrics,
+        periodLabel: manualKpiPeriodLabel(period),
+        rangeLabel: rangeLabel || summaryDateLabel,
+        scopeLabel: manualScopeLabel,
+        timezone: "Asia/Karachi",
+        includeUserColumn: isAdmin,
+      });
+    } catch (e) {
+      onError(e instanceof Error ? e.message : "Failed to export manual KPI PDF");
+    } finally {
+      setPdfExporting(false);
+    }
+  }
+
   return (
     <section className="space-y-4 rounded-xl border border-violet-800/40 bg-violet-950/10 p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -219,7 +278,7 @@ export function ManualKpiSection({
             View
             <select
               value={period}
-              onChange={(e) => setPeriod(e.target.value as ManualKpiPeriod)}
+              onChange={(e) => onPeriodChange(e.target.value as ManualKpiPeriod)}
               className="mt-1 block rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-2 text-sm text-slate-100"
             >
               {MANUAL_PERIOD_OPTIONS.map((opt) => (
@@ -229,6 +288,30 @@ export function ManualKpiSection({
               ))}
             </select>
           </label>
+          {period === "custom" && (
+            <>
+              <label className="block text-xs text-slate-400">
+                From
+                <input
+                  type="date"
+                  value={customDateFrom}
+                  max={customDateTo}
+                  onChange={(e) => setCustomDateFrom(e.target.value)}
+                  className="mt-1 block rounded-lg border border-violet-700/60 bg-slate-900 px-2.5 py-2 text-sm text-slate-100"
+                />
+              </label>
+              <label className="block text-xs text-slate-400">
+                To
+                <input
+                  type="date"
+                  value={customDateTo}
+                  min={customDateFrom}
+                  onChange={(e) => setCustomDateTo(e.target.value)}
+                  className="mt-1 block rounded-lg border border-violet-700/60 bg-slate-900 px-2.5 py-2 text-sm text-slate-100"
+                />
+              </label>
+            </>
+          )}
           {isAdmin && (
             <label className="block text-xs text-slate-400">
               User
@@ -261,6 +344,14 @@ export function ManualKpiSection({
           >
             {adding ? "Adding…" : "Add row"}
           </button>
+          <button
+            type="button"
+            disabled={loading || pdfExporting}
+            onClick={exportManualPdf}
+            className="rounded-lg border border-violet-600/60 bg-violet-950/40 px-3 py-2 text-sm font-medium text-violet-100 hover:bg-violet-900/50 disabled:opacity-50"
+          >
+            {pdfExporting ? "Exporting…" : "Export manual KPI (PDF)"}
+          </button>
         </div>
       </div>
 
@@ -275,7 +366,9 @@ export function ManualKpiSection({
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-11 gap-2 text-center text-xs">
           <div className="rounded border border-emerald-800/60 bg-emerald-900/40 p-2">
             <p className="text-[10px] text-emerald-300 uppercase font-semibold">Date</p>
-            <p className="font-mono text-emerald-100 mt-1 truncate">{anchorDate}</p>
+            <p className="font-mono text-emerald-100 mt-1 truncate" title={summaryDateLabel}>
+              {summaryDateLabel}
+            </p>
           </div>
           <div className="rounded border border-emerald-800/60 bg-emerald-900/40 p-2">
             <p className="text-[10px] text-emerald-300 uppercase font-semibold">WA Chat</p>

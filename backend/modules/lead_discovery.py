@@ -839,14 +839,10 @@ def _looks_like_mobile(phone: str) -> bool:
     return False
 
 
-def _assign_phone_slots(phones: set[str]) -> dict[str, str | None]:
-    """Map scraped phones onto clients-table columns.
+def _assign_phone_slots(phones: set[str], country_hint: str | None = None) -> dict[str, str | None]:
+    """Map scraped phones onto clients-table columns (WhatsApp-capable → primary columns)."""
+    from modules.phone_routing import route_contact_phones
 
-    Primary Mobile ← best mobile (else best overall)
-    Secondary Mobile ← next mobile
-    Primary Phone ← best landline-like
-    Secondary Phone ← next landline / leftover
-    """
     ranked = _ranked_phones(phones)
     if not ranked:
         return {
@@ -855,23 +851,13 @@ def _assign_phone_slots(phones: set[str]) -> dict[str, str | None]:
             "primary_phone": None,
             "secondary_phone": None,
         }
-    mobiles = [p for p in ranked if _looks_like_mobile(p)]
-    landlines = [p for p in ranked if not _looks_like_mobile(p)]
-    primary_mobile = mobiles[0] if mobiles else ranked[0]
-    secondary_mobile = mobiles[1] if len(mobiles) > 1 else None
-    primary_phone = landlines[0] if landlines else None
-    leftover = [
-        p
-        for p in ranked
-        if p not in {primary_mobile, secondary_mobile, primary_phone}
-    ]
-    secondary_phone = leftover[0] if leftover else (landlines[1] if len(landlines) > 1 else None)
-    return {
-        "phone": primary_mobile,
-        "secondary_mobile": secondary_mobile,
-        "primary_phone": primary_phone,
-        "secondary_phone": secondary_phone,
-    }
+    return route_contact_phones(
+        phone=ranked[0] if ranked else None,
+        primary_phone=ranked[1] if len(ranked) > 1 else None,
+        secondary_mobile=ranked[2] if len(ranked) > 2 else None,
+        secondary_phone=ranked[3] if len(ranked) > 3 else None,
+        country_hint=country_hint,
+    )
 
 
 def _ranked_emails(emails: set[str], company_domain: str | None) -> list[str]:
@@ -2264,7 +2250,7 @@ def _enrich_candidate_contact(
             if key and key not in socials:
                 socials[key] = _clean_social_url(full_url)
 
-    phone_slots = _assign_phone_slots(phones)
+    phone_slots = _assign_phone_slots(phones, country_hint=candidate.country)
     if candidate.phone == _NOT_FOUND and phone_slots.get("phone"):
         candidate.phone = _clean_found(phone_slots["phone"])
     if not candidate.secondary_mobile and phone_slots.get("secondary_mobile"):

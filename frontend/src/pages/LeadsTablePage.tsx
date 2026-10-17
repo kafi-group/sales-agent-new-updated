@@ -23,17 +23,12 @@ import { LeadsTableCsvImport } from "../components/LeadsTableCsvImport";
 import { SocialLinksCell } from "../components/SocialLinksCell";
 import { BulkEmailModal } from "../components/BulkEmailModal";
 import { BulkWhatsAppModal } from "../components/BulkWhatsAppModal";
-import { BulkTelegramModal } from "../components/BulkTelegramModal";
 import { ScheduleMeetingModal } from "../components/ScheduleMeetingModal";
 import { AiConclusionSidePanel } from "../components/AiConclusionSidePanel";
 import {
   LeadWhatsAppComposeModal,
   type WhatsAppComposeTarget,
 } from "../components/WhatsAppComposeLink";
-import {
-  LeadTelegramComposeModal,
-  type TelegramComposeTarget,
-} from "../components/TelegramComposeLink";
 import { SelectedContactQuickActions } from "../components/SelectedContactQuickActions";
 import {
   BulkActionProgressPanel,
@@ -41,7 +36,6 @@ import {
 } from "../components/BulkActionProgressPanel";
 import { CallLeadButton } from "../components/CallLeadButton";
 import { WhatsAppLeadButton } from "../components/WhatsAppLeadButton";
-import { TelegramLeadButton } from "../components/TelegramLeadButton";
 import { DialpadPhoneText } from "../components/DialpadPhoneText";
 import { EmailLeadButton } from "../components/EmailLeadButton";
 import { Pagination } from "../components/Pagination";
@@ -66,7 +60,6 @@ import {
   IconTrash,
   IconUpload,
   IconWhatsApp,
-  IconTelegram,
   IconX,
   IconXCircle,
   IconRobot,
@@ -77,6 +70,7 @@ import {
   type ColumnDef,
 } from "../hooks/useColumnVisibility";
 import { exportLeadsTableCsv } from "../utils/exportCsv";
+import { formatWhatsAppErrorForUser } from "../utils/whatsappFailure";
 import { UNASSIGNED } from "../utils/leadAssignees";
 import { listAiResearchHighlights, syncAiResearchHighlightsFromLog } from "../utils/aiResearchHighlights";
 import {
@@ -1156,6 +1150,8 @@ export function LeadsTablePage({
   onRestoreSelectedConsumed,
 }: LeadsTablePageProps) {
   const { isAdmin, user } = useAuth();
+  const kpiDialSection =
+    section === "interested_clients" || section === "follow_up_clients" ? section : undefined;
   const pendingFindOnMount = peekPendingAiResearchFind();
   const initialTableViewRef = useRef(
     (() => {
@@ -1211,10 +1207,6 @@ export function LeadsTablePage({
   const [whatsappTargetIds, setWhatsappTargetIds] = useState<number[] | null>(null);
   const [whatsappComposeTarget, setWhatsappComposeTarget] =
     useState<WhatsAppComposeTarget | null>(null);
-  const [showBulkTelegram, setShowBulkTelegram] = useState(false);
-  const [telegramTargetIds, setTelegramTargetIds] = useState<number[] | null>(null);
-  const [telegramComposeTarget, setTelegramComposeTarget] =
-    useState<TelegramComposeTarget | null>(null);
   const [bulkWhatsAppNotice, setBulkWhatsAppNotice] = useState<string | null>(null);
   const [scheduleMeetingRow, setScheduleMeetingRow] = useState<LeadTableRow | null>(null);
   const [showCsvImport, setShowCsvImport] = useState(false);
@@ -2877,18 +2869,6 @@ export function LeadsTablePage({
     setShowBulkWhatsApp(true);
   }
 
-  function openTelegramCompose(
-    row: LeadTableRow,
-    phone: string,
-    initialTab?: "message" | "template",
-  ) {
-    setTelegramComposeTarget({
-      row,
-      phone: phone.trim(),
-      initialTab,
-    });
-  }
-
   async function saveFollowUpAt(rowId: number, followUpAt: string | null) {
     try {
       const result = await client.scheduleInterestedFollowUp(rowId, followUpAt);
@@ -3671,7 +3651,6 @@ export function LeadsTablePage({
                     }
                     onError={onError}
                     onWhatsApp={() => openBulkWhatsAppForRows([row.id])}
-                    onTelegram={(phone, mode) => openTelegramCompose(row, phone, mode)}
                   />
                 );
               })()
@@ -3695,24 +3674,6 @@ export function LeadsTablePage({
               }}
             >
               WhatsApp ({selected.size})
-            </ToolbarMenuItem>
-            <ToolbarMenuItem
-              icon={IconTelegram}
-              tone="sky"
-              disabled={
-                selected.size === 0 ||
-                bulkOnboarding ||
-                deletingSelected ||
-                deletingId !== null ||
-                editMode
-              }
-              title="Send Telegram"
-              onClick={() => {
-                setTelegramTargetIds([...selected]);
-                setShowBulkTelegram(true);
-              }}
-            >
-              Telegram ({selected.size})
             </ToolbarMenuItem>
             <ToolbarMenuItem
               icon={IconCalendar}
@@ -4864,16 +4825,12 @@ export function LeadsTablePage({
                               assignedToUserId={row.assigned_to_user_id}
                               assignedTo={row.assigned_to}
                               compact
+                              dialSection={kpiDialSection}
                             />
                             <WhatsAppLeadButton
                               phone={row.contact_phone}
                               compact
                               onClick={() => openWhatsAppCompose(row, row.contact_phone!)}
-                            />
-                            <TelegramLeadButton
-                              phone={row.contact_phone}
-                              compact
-                              onClick={() => openTelegramCompose(row, row.contact_phone!)}
                             />
                           </span>
                         ) : (
@@ -4897,19 +4854,13 @@ export function LeadsTablePage({
                               assignedToUserId={row.assigned_to_user_id}
                               assignedTo={row.assigned_to}
                               compact
+                              dialSection={kpiDialSection}
                             />
                             <WhatsAppLeadButton
                               phone={row.contact_secondary_mobile}
                               compact
                               onClick={() =>
                                 openWhatsAppCompose(row, row.contact_secondary_mobile!)
-                              }
-                            />
-                            <TelegramLeadButton
-                              phone={row.contact_secondary_mobile}
-                              compact
-                              onClick={() =>
-                                openTelegramCompose(row, row.contact_secondary_mobile!)
                               }
                             />
                           </span>
@@ -4934,19 +4885,13 @@ export function LeadsTablePage({
                               assignedToUserId={row.assigned_to_user_id}
                               assignedTo={row.assigned_to}
                               compact
+                              dialSection={kpiDialSection}
                             />
                             <WhatsAppLeadButton
                               phone={row.contact_primary_phone}
                               compact
                               onClick={() =>
                                 openWhatsAppCompose(row, row.contact_primary_phone!)
-                              }
-                            />
-                            <TelegramLeadButton
-                              phone={row.contact_primary_phone}
-                              compact
-                              onClick={() =>
-                                openTelegramCompose(row, row.contact_primary_phone!)
                               }
                             />
                           </span>
@@ -4971,19 +4916,13 @@ export function LeadsTablePage({
                               assignedToUserId={row.assigned_to_user_id}
                               assignedTo={row.assigned_to}
                               compact
+                              dialSection={kpiDialSection}
                             />
                             <WhatsAppLeadButton
                               phone={row.contact_secondary_phone}
                               compact
                               onClick={() =>
                                 openWhatsAppCompose(row, row.contact_secondary_phone!)
-                              }
-                            />
-                            <TelegramLeadButton
-                              phone={row.contact_secondary_phone}
-                              compact
-                              onClick={() =>
-                                openTelegramCompose(row, row.contact_secondary_phone!)
                               }
                             />
                           </span>
@@ -5474,16 +5413,12 @@ export function LeadsTablePage({
                             phone={row.contact_phone}
                             onError={onError}
                             compact
+                            dialSection={kpiDialSection}
                           />
                           <WhatsAppLeadButton
                             phone={row.contact_phone}
                             compact
                             onClick={() => openWhatsAppCompose(row, row.contact_phone!)}
-                          />
-                          <TelegramLeadButton
-                            phone={row.contact_phone}
-                            compact
-                            onClick={() => openTelegramCompose(row, row.contact_phone!)}
                           />
                         </span>
                       ) : (
@@ -5521,6 +5456,7 @@ export function LeadsTablePage({
                             assignedToUserId={row.assigned_to_user_id}
                             assignedTo={row.assigned_to}
                             compact
+                            dialSection={kpiDialSection}
                           />
                           <WhatsAppLeadButton
                             phone={
@@ -5530,20 +5466,6 @@ export function LeadsTablePage({
                             compact
                             onClick={() =>
                               openWhatsAppCompose(
-                                row,
-                                (row.contact_secondary_mobile ||
-                                  row.contact_secondary_phone) as string,
-                              )
-                            }
-                          />
-                          <TelegramLeadButton
-                            phone={
-                              (row.contact_secondary_mobile ||
-                                row.contact_secondary_phone) as string
-                            }
-                            compact
-                            onClick={() =>
-                              openTelegramCompose(
                                 row,
                                 (row.contact_secondary_mobile ||
                                   row.contact_secondary_phone) as string,
@@ -5757,19 +5679,6 @@ export function LeadsTablePage({
         />
       )}
 
-      {telegramComposeTarget && (
-        <LeadTelegramComposeModal
-          key={`tg-${telegramComposeTarget.phone}-${telegramComposeTarget.initialTab ?? "message"}-${telegramComposeTarget.row.id}`}
-          target={telegramComposeTarget}
-          onClose={() => setTelegramComposeTarget(null)}
-          onError={onError}
-          onSent={(message) => {
-            setBulkWhatsAppNotice(message);
-            setTelegramComposeTarget(null);
-          }}
-        />
-      )}
-
       {scheduleMeetingRow && (
         <ScheduleMeetingModal
           row={scheduleMeetingRow}
@@ -5817,7 +5726,7 @@ export function LeadsTablePage({
               setBulkWhatsAppNotice(
                 `WhatsApp delivery failed for ${failed} message(s). ` +
                   (deliveryErr
-                    ? `Meta: ${deliveryErr}. `
+                    ? `${formatWhatsAppErrorForUser(deliveryErr)} `
                     : "Check WhatsApp inbox for the error. ") +
                   "If Meta says payment / eligibility, add a payment method on the Essence WABA in Meta Business Suite, then retry.",
               );
@@ -5838,28 +5747,6 @@ export function LeadsTablePage({
         />
       )}
 
-      {showBulkTelegram && telegramTargetIds && telegramTargetIds.length > 0 && (
-        <BulkTelegramModal
-          buyerIds={telegramTargetIds}
-          onClose={() => {
-            setShowBulkTelegram(false);
-            setTelegramTargetIds(null);
-          }}
-          onError={onError}
-          onCreated={(result) => {
-            const sent = result.sent_count ?? 0;
-            const failed = result.failed_count ?? 0;
-            setBulkWhatsAppNotice(
-              `Sent ${sent} Telegram message(s)` +
-                (failed > 0 ? `, ${failed} failed` : "") +
-                ". Connect Telegram Mobile if sends fail.",
-            );
-            clearSelection();
-            setShowBulkTelegram(false);
-            setTelegramTargetIds(null);
-          }}
-        />
-      )}
       {colFilterModal && (
         <div className="fixed inset-0 z-[999] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6">
           <div className="bg-slate-900 border-2 border-slate-700 rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh] animate-in fade-in zoom-in duration-150">

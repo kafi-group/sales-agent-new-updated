@@ -19,9 +19,21 @@ def _is_admin(user: AppUser) -> bool:
     return is_real_admin(user)
 
 
-def period_bounds(report_date: date, period: str) -> tuple[date, date]:
-    """Return inclusive start/end dates for day | week | month | year."""
+def period_bounds(
+    report_date: date,
+    period: str,
+    *,
+    date_from: date | None = None,
+    date_to: date | None = None,
+) -> tuple[date, date]:
+    """Return inclusive start/end dates for day | week | month | year | custom."""
     normalized = (period or "day").strip().lower()
+    if normalized in {"custom", "range"}:
+        if date_from is None or date_to is None:
+            raise ValueError("Custom period requires date_from and date_to")
+        if date_to < date_from:
+            raise ValueError("End date must be on or after start date")
+        return date_from, date_to
     if normalized in {"week", "weekly"}:
         start_date = report_date - timedelta(days=report_date.weekday())
         end_date = start_date + timedelta(days=6)
@@ -67,8 +79,18 @@ def list_manual_kpi_entries(
     report_date: date,
     period: str = "day",
     user_id: int | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
 ) -> dict[str, Any]:
-    start_date, end_date = period_bounds(report_date, period)
+    start_date, end_date = period_bounds(
+        report_date,
+        period,
+        date_from=date_from,
+        date_to=date_to,
+    )
+    normalized = (period or "day").strip().lower()
+    if normalized in {"custom", "range"}:
+        normalized = "custom"
     admin = _is_admin(viewer)
     target_user_id = user_id if admin else viewer.id
     if not admin:
@@ -106,7 +128,7 @@ def list_manual_kpi_entries(
     return {
         "items": [_entry_dict(r, users.get(r.user_id)) for r in rows],
         "total": len(rows),
-        "period": (period or "day").strip().lower(),
+        "period": normalized,
         "date_start": start_date.isoformat(),
         "date_end": end_date.isoformat(),
         "timezone": "Asia/Karachi",

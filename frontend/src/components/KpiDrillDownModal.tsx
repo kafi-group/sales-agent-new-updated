@@ -9,7 +9,13 @@ interface KpiDrillDownModalProps {
   scopeLabel: string;
   dateLabel: string;
   /** Same date / period / user the KPI page is showing — used to load per-contact rows. */
-  reportParams?: { date: string; period: string; user_id: number | null };
+  reportParams?: {
+    date: string;
+    period: string;
+    date_from?: string;
+    date_to?: string;
+    user_id: number | null;
+  };
   onClose: () => void;
 }
 
@@ -41,6 +47,10 @@ function getCardIcon(cardKey: keyof KpiCounts): string {
   switch (cardKey) {
     case "calls_logged":
       return "📞";
+    case "calls_manual":
+      return "⌨️";
+    case "calls_follow_up_clients":
+      return "⏰";
     case "companies_called":
       return "🏢";
     case "outcomes_follow_up":
@@ -92,6 +102,8 @@ export function KpiDrillDownModal({
 
   const reportDate = reportParams?.date;
   const reportPeriod = reportParams?.period;
+  const reportDateFrom = reportParams?.date_from;
+  const reportDateTo = reportParams?.date_to;
   const reportUserId = reportParams?.user_id ?? null;
   useEffect(() => {
     setServerRows(null);
@@ -102,7 +114,14 @@ export function KpiDrillDownModal({
     let active = true;
     setRowsLoading(true);
     client
-      .getKpiCardRows({ card: cardKey, date: reportDate, period: reportPeriod, user_id: reportUserId })
+      .getKpiCardRows({
+        card: cardKey,
+        date: reportDate,
+        period: reportPeriod,
+        date_from: reportDateFrom,
+        date_to: reportDateTo,
+        user_id: reportUserId,
+      })
       .then((res) => {
         if (active) setServerRows(res.rows);
       })
@@ -116,7 +135,7 @@ export function KpiDrillDownModal({
     return () => {
       active = false;
     };
-  }, [cardKey, reportDate, reportPeriod, reportUserId]);
+  }, [cardKey, reportDate, reportDateFrom, reportDateTo, reportPeriod, reportUserId]);
 
   // Filter activities matching the clicked KPI card
   const filteredActivities = useMemo(() => {
@@ -132,6 +151,22 @@ export function KpiDrillDownModal({
       switch (cardKey) {
         case "calls_logged":
           return type === "call_logged";
+
+        case "calls_manual":
+          return (
+            type === "call_logged" &&
+            (item.details?.manual_call === true ||
+              item.details?.dial_source === "manual_dial" ||
+              (item.title || "").toLowerCase().includes("manual call"))
+          );
+
+        case "calls_follow_up_clients":
+          return (
+            type === "call_logged" &&
+            (item.details?.follow_up_client_call === true ||
+              item.details?.dial_section === "interested_clients" ||
+              item.details?.dial_section === "follow_up_clients")
+          );
 
         case "companies_called":
           return type === "call_logged" || type === "call_outcome" || type === "call_remarks";

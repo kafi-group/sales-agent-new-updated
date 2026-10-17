@@ -33,7 +33,15 @@ def get_kpi_report(
     ),
     period: str = Query(
         "day",
-        description="Report range: day | week | month",
+        description="Report range: day | week | month | custom",
+    ),
+    date_from: date | None = Query(
+        None,
+        description="Custom period: inclusive start (required when period=custom)",
+    ),
+    date_to: date | None = Query(
+        None,
+        description="Custom period: inclusive end (required when period=custom)",
     ),
     user_id: int | None = Query(
         None,
@@ -49,6 +57,8 @@ def get_kpi_report(
             viewer=user,
             user_id=user_id,
             period=period,
+            date_from=date_from,
+            date_to=date_to,
         )
     except ValueError as exc:
         raise HTTPException(404, str(exc)) from exc
@@ -68,6 +78,8 @@ def create_kpi_summary(
             viewer=user,
             user_id=payload.user_id,
             period=payload.period,
+            date_from=payload.date_from,
+            date_to=payload.date_to,
         )
     except ValueError as exc:
         raise HTTPException(404, str(exc)) from exc
@@ -82,7 +94,9 @@ def create_kpi_summary(
 @router.get("/manual", response_model=ManualKpiListResponse)
 def list_manual_kpi(
     report_date: date = Query(..., alias="date"),
-    period: str = Query("day", description="day | week | month | year"),
+    period: str = Query("day", description="day | week | month | year | custom"),
+    date_from: date | None = Query(None, description="Custom period: inclusive start"),
+    date_to: date | None = Query(None, description="Custom period: inclusive end"),
     user_id: int | None = Query(None, description="Admin only: filter by user"),
     db: Session = Depends(get_db),
     user: AppUser = Depends(get_current_user),
@@ -94,6 +108,8 @@ def list_manual_kpi(
             report_date=report_date,
             period=period,
             user_id=user_id,
+            date_from=date_from,
+            date_to=date_to,
         )
     except ValueError as exc:
         raise HTTPException(404, str(exc)) from exc

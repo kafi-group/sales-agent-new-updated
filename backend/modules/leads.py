@@ -30,6 +30,7 @@ from modules.product_categories import (
 )
 from modules.research import BuyerProfile, ResearchModule
 from modules.incomplete_archives import INCOMPLETE_ARCHIVES_SOURCE
+from modules.phone_routing import contact_fields_for_lead_table
 
 _orchestrator = Orchestrator()
 _research = ResearchModule()
@@ -903,11 +904,8 @@ def _hydrate_lead_table_rows(
                 "contact_id": contact.id if contact else None,
                 "contact_name": contact.full_name if contact else None,
                 "contact_email": contact.email if contact else None,
-                "contact_phone": contact.phone if contact else None,
+                **contact_fields_for_lead_table(contact, buyer.country),
                 "contact_designation": contact.designation if contact else None,
-                "contact_secondary_mobile": contact.secondary_mobile if contact else None,
-                "contact_primary_phone": contact.primary_phone if contact else None,
-                "contact_secondary_phone": contact.secondary_phone if contact else None,
                 "contact_secondary_email": contact.secondary_email if contact else None,
                 "market_role": buyer.market_role.value if buyer.market_role else "unknown",
                 "market_role_reasoning": buyer.market_role_reasoning,
@@ -2275,11 +2273,8 @@ def get_lead_table_row(db: Session, buyer_id: int) -> dict[str, object] | None:
         "contact_id": contact.id if contact else None,
         "contact_name": contact.full_name if contact else None,
         "contact_email": contact.email if contact else None,
-        "contact_phone": contact.phone if contact else None,
+        **contact_fields_for_lead_table(contact, buyer.country),
         "contact_designation": contact.designation if contact else None,
-        "contact_secondary_mobile": contact.secondary_mobile if contact else None,
-        "contact_primary_phone": contact.primary_phone if contact else None,
-        "contact_secondary_phone": contact.secondary_phone if contact else None,
         "contact_secondary_email": contact.secondary_email if contact else None,
         "market_role": buyer.market_role.value if buyer.market_role else "unknown",
         "market_role_reasoning": buyer.market_role_reasoning,

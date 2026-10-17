@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import {
   client,
+  EMAIL_ATTACHMENT_MAX_BYTES,
   type CatalogueItem,
   type EmailAttachment,
 } from "../api/client";
@@ -13,7 +14,6 @@ import {
   IconRefresh,
   IconSend,
   IconWhatsApp,
-  IconTelegram,
   IconUpload,
 } from "../components/icons/AppIcons";
 
@@ -43,11 +43,9 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-/** Gmail/Outlook reject ~25 MB messages — keep a buffer for body + MIME. */
-const EMAIL_ATTACH_MAX_BYTES = 20 * 1024 * 1024;
-
+/** Must match backend EMAIL_ATTACH_MAX_BYTES (10 MB). Larger PDFs get a download link. */
 function catalogueIsEmailAttachable(cat: CatalogueItem): boolean {
-  return Boolean(cat.size) && cat.size <= EMAIL_ATTACH_MAX_BYTES;
+  return Boolean(cat.size) && cat.size <= EMAIL_ATTACHMENT_MAX_BYTES;
 }
 
 function cataloguePublicUrl(cat: CatalogueItem): string {
@@ -77,10 +75,9 @@ export function CataloguePage({
   const [composeSubject, setComposeSubject] = useState("");
   const [composeBody, setComposeBody] = useState("");
 
-  // WhatsApp / Telegram send modal state
+  // WhatsApp send modal state
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
   const [shareCatalogueIds, setShareCatalogueIds] = useState<string[]>([]);
-  const [shareChannel, setShareChannel] = useState<"whatsapp" | "telegram">("whatsapp");
   const [whatsAppRecipient, setWhatsAppRecipient] = useState("");
   const [whatsAppMessage, setWhatsAppMessage] = useState("");
   const [whatsAppSending, setWhatsAppSending] = useState(false);
@@ -191,10 +188,23 @@ export function CataloguePage({
         attachable.length > 0
           ? await client.attachCatalogues(attachable.map((c) => c.id))
           : [];
+      if (attachable.length > 0 && atts.length === 0) {
+        throw new Error(
+          "The catalogue PDF could not be attached (file missing or over the 10 MB email limit). " +
+            "Compress/replace the PDF under Catalogues, then try Email again — or send with a download link only.",
+        );
+      }
+      // Server may skip some files (size on disk vs listed size). Never claim those are attached.
+      const attachedNames = new Set(atts.map((a) => (a.filename || "").toLowerCase()));
+      const attachedCats = attachable.filter((c) =>
+        attachedNames.has((c.filename || "").toLowerCase()),
+      );
+      const skippedByServer = attachable.filter((c) => !attachedCats.includes(c));
+      const linkCats = [...linkOnly, ...skippedByServer];
       setComposeAttachments(atts);
 
       const titles = selected.map((c) => c.title).join(" & ");
-      const linkHtml = linkOnly
+      const linkHtml = linkCats
         .map(
           (c) =>
             `<li><a href="${cataloguePublicUrl(c)}">${c.title}</a> (${formatSize(c.size)} — download link; too large to attach)</li>`,
@@ -205,11 +215,11 @@ export function CataloguePage({
       setComposeBody(
         `<p>Dear Valued Partner,</p>` +
         `<p>Thank you for your interest in <strong>Kafi Commodities (Pvt.) Ltd. (Brand: ESSENCE)</strong>.</p>` +
-        (attachable.length > 0
-          ? `<p>Please find attached our latest <strong>${attachable.map((c) => c.title).join(" & ")}</strong> containing complete product specifications, packaging options, and private labeling details.</p>`
+        (atts.length > 0
+          ? `<p>Please find attached our latest <strong>${(attachedCats.length ? attachedCats : attachable).map((c) => c.title).join(" & ")}</strong> containing complete product specifications, packaging options, and private labeling details.</p>`
           : `<p>Please use the download link below for our latest <strong>${titles}</strong> containing complete product specifications, packaging options, and private labeling details.</p>`) +
         (linkHtml
-          ? `<p>The following catalogue${linkOnly.length === 1 ? " is" : "s are"} too large for email attachment (mailbox limit ~25 MB). Please download:</p><ul>${linkHtml}</ul>`
+          ? `<p>The following catalogue${linkCats.length === 1 ? " is" : "s are"} too large for email attachment (limit 10 MB). Please download:</p><ul>${linkHtml}</ul>`
           : "") +
         `<p>We would be pleased to provide you with customized FOB/CNF pricing and discuss MOQ requirements for your target market.</p>` +
         `<p>Looking forward to collaborating with your organization.</p>` +
@@ -231,34 +241,11 @@ export function CataloguePage({
       })
       .join("\n");
 
-    setShareChannel("whatsapp");
     setShareCatalogueIds(idsToAttach);
     setWhatsAppRecipient("");
     setWhatsAppMessage(
       `Hello! 👋 Greetings from *Kafi Commodities (Pvt.) Ltd. (Brand: ESSENCE)*.\n\n` +
       `Here is our official *${titles}*.\n\n` +
-      (links ? `Download PDF:\n${links}\n\n` : "") +
-      `Our range covers Basmati Rice, Himalayan Pink Salt, Spices, Pickles, Chutneys, Pastes, Sauces, and Desserts.\n\n` +
-      `Let us know your destination port and quantity requirements so we can share instant CNF/FOB quotations.`
-    );
-    setShowWhatsAppModal(true);
-  }
-
-  function handleOpenTelegram(specificCatId?: string) {
-    const idsToAttach = specificCatId ? [specificCatId] : selectedCatIds;
-    const selected = catalogues.filter((c) => idsToAttach.includes(c.id));
-    const titles = selected.map((c) => c.title).join(" & ") || "product catalogue";
-    const links = selected
-      .map((c) => {
-        return `• ${c.title}: ${cataloguePublicUrl(c)}`;
-      })
-      .join("\n");
-
-    setShareChannel("telegram");
-    setWhatsAppRecipient("");
-    setWhatsAppMessage(
-      `Hello! Greetings from Kafi Commodities (Pvt.) Ltd. (Brand: ESSENCE).\n\n` +
-      `Here is our official ${titles}.\n\n` +
       (links ? `Download PDF:\n${links}\n\n` : "") +
       `Our range covers Basmati Rice, Himalayan Pink Salt, Spices, Pickles, Chutneys, Pastes, Sauces, and Desserts.\n\n` +
       `Let us know your destination port and quantity requirements so we can share instant CNF/FOB quotations.`
@@ -278,42 +265,33 @@ export function CataloguePage({
     }
     setWhatsAppSending(true);
     try {
-      if (shareChannel === "telegram") {
-        await client.sendTelegramPersonal(phone, whatsAppMessage.trim());
-        setNotice("Catalogue sent via Telegram Mobile.");
+      if (!shareCatalogueIds.length) {
+        onError("Choose a catalogue before sending.");
+        return;
+      }
+      const result = await client.shareCataloguesOnWhatsApp({
+        to_phone: phone,
+        catalogue_ids: shareCatalogueIds,
+        message: whatsAppMessage.trim(),
+      });
+      const attached = result.attached_count ?? 0;
+      const linkOnly = (result.files || []).filter((file) => file.mode !== "document");
+      if (attached > 0 && linkOnly.length === 0) {
+        setNotice(`Sent to ${phone}. The catalogue PDF and message were delivered on WhatsApp.`);
+      } else if (attached > 0) {
+        setNotice(
+          `Sent to ${phone}. ${attached} PDF${attached === 1 ? "" : "s"} attached. ` +
+            "Larger catalogues were sent as a download link in the same chat.",
+        );
       } else {
-        if (!shareCatalogueIds.length) {
-          onError("Choose a catalogue before sending.");
-          return;
-        }
-        const result = await client.shareCataloguesOnWhatsApp({
-          to_phone: phone,
-          catalogue_ids: shareCatalogueIds,
-          message: whatsAppMessage.trim(),
-        });
-        const attached = result.attached_count ?? 0;
-        const linkOnly = (result.files || []).filter((file) => file.mode !== "document");
-        if (attached > 0 && linkOnly.length === 0) {
-          setNotice(`Sent to ${phone}. The catalogue PDF and message were delivered on WhatsApp.`);
-        } else if (attached > 0) {
-          setNotice(
-            `Sent to ${phone}. ${attached} PDF${attached === 1 ? "" : "s"} attached. ` +
-              "Larger catalogues were sent as a download link in the same chat.",
-          );
-        } else {
-          setNotice(
-            `Sent to ${phone}. The PDF is too large to attach, so WhatsApp delivered the download link.`,
-          );
-        }
+        setNotice(
+          `Sent to ${phone}. The PDF is too large to attach, so WhatsApp delivered the download link.`,
+        );
       }
       setShowWhatsAppModal(false);
     } catch (err) {
       onError(
-        err instanceof Error
-          ? err.message
-          : shareChannel === "telegram"
-            ? "Failed to send catalogue via Telegram"
-            : "Failed to send catalogue via personal WhatsApp",
+        err instanceof Error ? err.message : "Failed to send catalogue via personal WhatsApp",
       );
     } finally {
       setWhatsAppSending(false);
@@ -364,15 +342,6 @@ export function CataloguePage({
             >
               <IconWhatsApp size="xs" />
               <span>Share on WhatsApp ({selectedCatIds.length})</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleOpenTelegram()}
-              disabled={selectedCatIds.length === 0}
-              className="px-4 py-2 rounded-xl bg-sky-700/80 hover:bg-sky-600 border border-sky-500/40 text-xs font-semibold text-white transition shadow-sm cursor-pointer disabled:opacity-40 flex items-center gap-1.5"
-            >
-              <IconTelegram size="xs" />
-              <span>Share on Telegram ({selectedCatIds.length})</span>
             </button>
           </div>
         </div>
@@ -466,7 +435,7 @@ export function CataloguePage({
 
                     {!catalogueIsEmailAttachable(cat) ? (
                       <p className="text-[11px] text-amber-200/90 bg-amber-500/10 border border-amber-500/25 rounded-lg px-2.5 py-1.5">
-                        Too large for email attachment (mailbox ~25 MB). Email and WhatsApp send a download link instead of the PDF file.
+                        Too large for email attachment (limit 10 MB). Email sends a download link instead of the PDF file.
                       </p>
                     ) : null}
 
@@ -557,14 +526,6 @@ export function CataloguePage({
                       <IconWhatsApp size="xs" />
                       <span>WhatsApp</span>
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => handleOpenTelegram(cat.id)}
-                      className="px-3 py-1.5 rounded-lg bg-sky-700/80 hover:bg-sky-600 border border-sky-500/40 text-xs font-semibold text-white transition flex items-center gap-1.5 cursor-pointer shadow-sm"
-                    >
-                      <IconTelegram size="xs" />
-                      <span>Telegram</span>
-                    </button>
                   </div>
                 </div>
               </div>
@@ -614,12 +575,8 @@ export function CataloguePage({
           <div className="w-full max-w-lg rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl p-5 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center gap-2 text-emerald-400 font-semibold text-sm">
-                {shareChannel === "telegram" ? <IconTelegram size="sm" /> : <IconWhatsApp size="sm" />}
-                <span>
-                  {shareChannel === "telegram"
-                    ? "Share Catalogue on Telegram"
-                    : "Share Catalogue on WhatsApp"}
-                </span>
+                <IconWhatsApp size="sm" />
+                <span>Share Catalogue on WhatsApp</span>
               </div>
               <button
                 type="button"
@@ -632,9 +589,8 @@ export function CataloguePage({
 
             <div className="space-y-3 text-xs">
               <p className="text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-3 py-2">
-                {shareChannel === "telegram"
-                  ? "Sends from your connected Telegram Mobile account."
-                  : "Sends from your linked WhatsApp Mobile. The recipient gets the message and the PDF on their phone. Connect WhatsApp Mobile first if you have not scanned the QR."}
+                Sends from your linked WhatsApp Mobile. The recipient gets the message and the PDF on
+                their phone. Connect WhatsApp Mobile first if you have not scanned the QR.
               </p>
               <label className="block space-y-1">
                 <span className="text-slate-400">Recipient Phone Number (e.g. +971501234567 or +923330313518)</span>
@@ -672,14 +628,8 @@ export function CataloguePage({
                 disabled={whatsAppSending || !whatsAppRecipient.trim() || !whatsAppMessage.trim()}
                 className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-xs font-semibold text-white flex items-center gap-1.5 shadow-sm"
               >
-                {shareChannel === "telegram" ? <IconTelegram size="xs" /> : <IconWhatsApp size="xs" />}
-                <span>
-                  {whatsAppSending
-                    ? "Sending…"
-                    : shareChannel === "telegram"
-                      ? "Send via Telegram"
-                      : "Send on WhatsApp"}
-                </span>
+                <IconWhatsApp size="xs" />
+                <span>{whatsAppSending ? "Sending…" : "Send on WhatsApp"}</span>
               </button>
             </div>
           </div>

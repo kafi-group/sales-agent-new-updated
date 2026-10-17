@@ -1,4 +1,5 @@
 export type WhatsAppFailureKey =
+  | "not_on_whatsapp"
   | "engagement_limit"
   | "undeliverable"
   | "marketing_opt_out"
@@ -14,15 +15,47 @@ export interface WhatsAppFailureInfo {
   hint: string;
 }
 
+/** Shown when Meta Cloud or Personal WhatsApp confirms the number has no WhatsApp account. */
+export const NOT_ON_WHATSAPP_USER_MESSAGE =
+  "This person does not exist on WhatsApp. Check that you are using their personal mobile number (not a landline), then try again.";
+
+export function isNotOnWhatsAppError(message: string | null | undefined): boolean {
+  const t = (message || "").toLowerCase();
+  if (!t) return false;
+  return (
+    t.includes("does not exist on whatsapp") ||
+    t.includes("not on whatsapp") ||
+    t.includes("not a valid whatsapp") ||
+    t.includes("not registered on whatsapp") ||
+    t.includes("recipient number is not registered") ||
+    t.includes("131026") ||
+    t.includes("131051") ||
+    (t.includes("undeliverable") && !t.includes("healthy ecosystem"))
+  );
+}
+
+/** Map API / Meta / bridge errors to a clear message for toasts and modals. */
+export function formatWhatsAppErrorForUser(message: string | null | undefined): string {
+  const trimmed = (message || "").trim();
+  if (!trimmed) return trimmed;
+  if (isNotOnWhatsAppError(trimmed)) return NOT_ON_WHATSAPP_USER_MESSAGE;
+  return trimmed;
+}
+
 /**
  * Sorts a WhatsApp delivery error (Meta wording or error code) into a plain category.
- * WhatsApp reports "blocked" and "not on WhatsApp" with the SAME error (131026 "Message
- * undeliverable"), so those two cannot be told apart automatically.
  */
 export function classifyWhatsAppFailure(message: string | null | undefined): WhatsAppFailureInfo {
   const t = (message || "").toLowerCase();
   const has = (...needles: string[]) => needles.some((n) => t.includes(n));
 
+  if (isNotOnWhatsAppError(message)) {
+    return {
+      key: "not_on_whatsapp",
+      label: "Not on WhatsApp",
+      hint: NOT_ON_WHATSAPP_USER_MESSAGE,
+    };
+  }
   if (has("healthy ecosystem", "131049")) {
     return {
       key: "engagement_limit",
@@ -42,10 +75,9 @@ export function classifyWhatsAppFailure(message: string | null | undefined): Wha
   if (has("undeliverable", "131026", "not a valid whatsapp", "not on whatsapp")) {
     return {
       key: "undeliverable",
-      label: "Not on WhatsApp, or blocked",
+      label: "Could not deliver",
       hint:
-        "WhatsApp does not say which: either the number is not on WhatsApp (fix it in the contact), " +
-        "or this person has blocked the business or not accepted WhatsApp’s latest terms.",
+        "WhatsApp blocked delivery. The number may be wrong, or the contact may have blocked the business.",
     };
   }
   if (has("131047", "re-engagement", "24 hour", "24-hour")) {

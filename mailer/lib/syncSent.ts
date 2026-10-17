@@ -19,6 +19,9 @@ export type AppendSentPayload = {
   cc?: string;
   bcc?: string;
   html?: boolean;
+  messageId?: string;
+  inReplyTo?: string;
+  references?: string;
 };
 
 /**
@@ -49,6 +52,9 @@ export async function appendMailerSentCopy(
         cc: payload.cc || undefined,
         bcc: payload.bcc || undefined,
         html: payload.html !== false,
+        message_id: payload.messageId || undefined,
+        in_reply_to: payload.inReplyTo || undefined,
+        references: payload.references || undefined,
       }),
       cache: "no-store",
     });

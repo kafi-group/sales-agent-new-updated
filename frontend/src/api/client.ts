@@ -7,6 +7,7 @@
  */
 
 import { clearSession, getStoredToken } from "../auth/session";
+import { formatWhatsAppErrorForUser } from "../utils/whatsappFailure";
 
 /**
  * Prefer relative `/api` (Vercel rewrite / Vite proxy) so cookies stay same-site.
@@ -128,7 +129,7 @@ export function sanitizeUserFacingError(message: unknown): string {
   if (/^upstream\s*500\b/i.test(trimmed) || /^error\s*500\b/i.test(trimmed)) {
     return HARD_RESTART_MESSAGE;
   }
-  return trimmed;
+  return formatWhatsAppErrorForUser(trimmed);
 }
 
 function messageForHttpError(status: number, text: string, statusText: string): string {
@@ -726,6 +727,8 @@ export interface AppUser {
 
 export interface KpiCounts {
   calls_logged: number;
+  calls_manual?: number;
+  calls_follow_up_clients?: number;
   companies_called?: number;
   outcomes_interested: number;
   outcomes_follow_up?: number;
@@ -779,7 +782,7 @@ export interface KpiPerUserSummary {
   activity_count: number;
 }
 
-export type KpiPeriod = "day" | "week" | "month";
+export type KpiPeriod = "day" | "week" | "month" | "custom";
 
 export interface KpiScorecardCell {
   key: string;
@@ -839,7 +842,7 @@ export interface KpiScorecardConfigPayload {
   users: Array<{ id: number; username: string; full_name: string }>;
   grade_order: string[];
 }
-export type ManualKpiPeriod = "day" | "week" | "month" | "year";
+export type ManualKpiPeriod = "day" | "week" | "month" | "year" | "custom";
 
 export interface ManualKpiEntry {
   id: number;
@@ -1178,15 +1181,6 @@ export interface EmailTemplate {
 }
 
 export interface WhatsAppPersonalTemplate {
-  id: number;
-  name: string;
-  body: string;
-  created_by_user_id?: number | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface TelegramPersonalTemplate {
   id: number;
   name: string;
   body: string;
@@ -3232,11 +3226,17 @@ export const client = {
   getDailyKpi: (params: {
     date: string;
     period?: KpiPeriod | string;
+    date_from?: string;
+    date_to?: string;
     user_id?: number | null;
   }) => {
     const search = new URLSearchParams();
     search.set("date", params.date);
     if (params.period) search.set("period", params.period);
+    if (params.period === "custom") {
+      if (params.date_from) search.set("date_from", params.date_from);
+      if (params.date_to) search.set("date_to", params.date_to);
+    }
     if (params.user_id != null) search.set("user_id", String(params.user_id));
     return request<DailyKpiReport>(`/kpi/daily?${search.toString()}`);
   },
@@ -3249,10 +3249,20 @@ export const client = {
       error_code?: string | null;
     }>(`/call-legs/status?call_sid=${encodeURIComponent(callSid)}`),
   /** Graded scorecard (targets vs. actual) for a day / week / month. */
-  getKpiScorecard: (params: { date: string; period?: KpiPeriod | string; user_id?: number | null }) => {
+  getKpiScorecard: (params: {
+    date: string;
+    period?: KpiPeriod | string;
+    date_from?: string;
+    date_to?: string;
+    user_id?: number | null;
+  }) => {
     const search = new URLSearchParams();
     search.set("date", params.date);
     if (params.period) search.set("period", params.period);
+    if (params.period === "custom") {
+      if (params.date_from) search.set("date_from", params.date_from);
+      if (params.date_to) search.set("date_to", params.date_to);
+    }
     if (params.user_id != null) search.set("user_id", String(params.user_id));
     return request<KpiScorecard>(`/kpi/scorecard?${search.toString()}`);
   },
@@ -3273,12 +3283,18 @@ export const client = {
     card: string;
     date: string;
     period?: KpiPeriod | string;
+    date_from?: string;
+    date_to?: string;
     user_id?: number | null;
   }) => {
     const search = new URLSearchParams();
     search.set("card", params.card);
     search.set("date", params.date);
     if (params.period) search.set("period", params.period);
+    if (params.period === "custom") {
+      if (params.date_from) search.set("date_from", params.date_from);
+      if (params.date_to) search.set("date_to", params.date_to);
+    }
     if (params.user_id != null) search.set("user_id", String(params.user_id));
     return request<{ card: string; total: number; rows: KpiActivityItem[] }>(
       `/kpi/card-rows?${search.toString()}`,
@@ -3287,6 +3303,8 @@ export const client = {
   generateKpiSummary: (params: {
     date: string;
     period?: KpiPeriod | string;
+    date_from?: string;
+    date_to?: string;
     user_id?: number | null;
   }) =>
     request<KpiSummaryResponse>("/kpi/summary", {
@@ -3295,17 +3313,26 @@ export const client = {
         date: params.date,
         period: params.period ?? "day",
         user_id: params.user_id ?? null,
+        ...(params.period === "custom"
+          ? { date_from: params.date_from ?? null, date_to: params.date_to ?? null }
+          : {}),
       }),
     }),
 
   listManualKpi: (params: {
     date: string;
     period?: ManualKpiPeriod | string;
+    date_from?: string;
+    date_to?: string;
     user_id?: number;
   }) => {
     const search = new URLSearchParams();
     search.set("date", params.date);
     if (params.period) search.set("period", params.period);
+    if (params.period === "custom") {
+      if (params.date_from) search.set("date_from", params.date_from);
+      if (params.date_to) search.set("date_to", params.date_to);
+    }
     if (params.user_id != null) search.set("user_id", String(params.user_id));
     return request<ManualKpiListResponse>(`/kpi/manual?${search}`);
   },
@@ -3442,7 +3469,7 @@ export const client = {
     days?: number | null;
     date_from?: string;
     date_to?: string;
-    channel?: "calls" | "emails" | "whatsapp" | "telegram" | string;
+    channel?: "calls" | "emails" | "whatsapp" | string;
     user_id?: number | string;
   } = {}) => {
     const search = new URLSearchParams();
@@ -3641,69 +3668,6 @@ export const client = {
       body: JSON.stringify(payload),
       noRetry: true,
       timeoutMs: 120_000,
-    }),
-  getTelegramPersonalStatus: () =>
-    request<Record<string, unknown>>("/telegram-personal/status"),
-  getTelegramPersonalSession: () =>
-    request<{ session_id: string; bridge_configured: boolean }>("/telegram-personal/session"),
-  startTelegramPersonalLogin: (phone: string) =>
-    request<Record<string, unknown>>("/telegram-personal/start-login", {
-      method: "POST",
-      body: JSON.stringify({ phone }),
-    }),
-  startTelegramPersonalQrLogin: () =>
-    request<Record<string, unknown>>("/telegram-personal/start-qr-login", {
-      method: "POST",
-    }),
-  pollTelegramPersonalQrLogin: () =>
-    request<Record<string, unknown>>("/telegram-personal/poll-qr-login", {
-      method: "POST",
-    }),
-  confirmTelegramPersonalCode: (code: string) =>
-    request<Record<string, unknown>>("/telegram-personal/confirm-code", {
-      method: "POST",
-      body: JSON.stringify({ code }),
-    }),
-  confirmTelegramPersonalPassword: (password: string) =>
-    request<Record<string, unknown>>("/telegram-personal/confirm-password", {
-      method: "POST",
-      body: JSON.stringify({ password }),
-    }),
-  disconnectTelegramPersonal: () =>
-    request<Record<string, unknown>>("/telegram-personal/disconnect", { method: "POST" }),
-  sendTelegramPersonal: (to_phone: string, message: string) =>
-    request<Record<string, unknown>>("/telegram-personal/send", {
-      method: "POST",
-      body: JSON.stringify({ to_phone, message }),
-    }),
-  sendTelegramPersonalBulk: (payload: { buyer_ids: number[]; message: string; phones?: string[] }) =>
-    request<{
-      sent_count: number;
-      failed_count: number;
-      skipped_count: number;
-      results: Array<{ phone: string; status: string; error?: string; company?: string }>;
-    }>("/telegram-personal/bulk-send", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }),
-  listTelegramPersonalTemplates: () =>
-    request<TelegramPersonalTemplate[]>("/telegram-personal/templates"),
-  createTelegramPersonalTemplate: (data: { name: string; body: string }) =>
-    request<TelegramPersonalTemplate>("/telegram-personal/templates", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-  updateTelegramPersonalTemplate: (
-    id: number,
-    data: { name?: string; body?: string },
-  ) =>
-    request<TelegramPersonalTemplate>(`/telegram-personal/templates/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    }),
-  deleteTelegramPersonalTemplate: (id: number) =>
-    request<{ ok: boolean }>(`/telegram-personal/templates/${id}`, {
-      method: "DELETE",
     }),
   sendWhatsAppPersonalBulk: (payload: { buyer_ids: number[]; message: string; to_phone?: string }) =>
     request<WhatsAppCampaignDraftResponse>("/whatsapp-personal/bulk-send", {
@@ -4754,7 +4718,7 @@ export const client = {
     ),
   initiateLeadCall: (
     leadId: number,
-    data: { contact_id?: number; phone?: string } = {},
+    data: { contact_id?: number; phone?: string; dial_section?: string } = {},
   ) =>
     request<CallInitiateResult>(`/leads/${leadId}/call`, {
       method: "POST",
@@ -5690,7 +5654,6 @@ export interface AiConclusionEngagementBucket {
   calls: number;
   emails: number;
   whatsapp: number;
-  telegram: number;
   quotations: number;
   follow_ups_pending: number;
 }

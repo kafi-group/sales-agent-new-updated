@@ -3,7 +3,7 @@ import { client, type AppUser } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { SearchableSelect } from "../components/SearchableSelect";
 
-type GuidanceChannel = "calls" | "emails" | "whatsapp" | "telegram";
+type GuidanceChannel = "calls" | "emails" | "whatsapp";
 type PeriodPreset = 1 | 7 | 30 | 90 | "range";
 
 interface MetricTile {
@@ -46,7 +46,6 @@ const CHANNELS: Array<{ id: GuidanceChannel; label: string }> = [
   { id: "calls", label: "Calls" },
   { id: "emails", label: "Emails" },
   { id: "whatsapp", label: "WhatsApp Meta" },
-  { id: "telegram", label: "Telegram" },
 ];
 
 function isoDateLocal(d: Date): string {
@@ -180,9 +179,6 @@ export function HelpfulGuidancePage({ onError }: HelpfulGuidancePageProps) {
             }`}
           >
             {item.label}
-            {item.id === "telegram" ? (
-              <span className="ml-1 opacity-70">(soon)</span>
-            ) : null}
           </button>
         ))}
       </div>
@@ -287,12 +283,6 @@ export function HelpfulGuidancePage({ onError }: HelpfulGuidancePageProps) {
           />
         </div>
       )}
-
-      {data.connected === false ? (
-        <div className="rounded-xl border border-amber-800/40 bg-amber-950/20 px-4 py-3 text-sm text-amber-100/90">
-          Telegram reply coaching is not connected yet. Use Calls, Emails, or WhatsApp Meta for now.
-        </div>
-      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {tiles.map((tile) => (

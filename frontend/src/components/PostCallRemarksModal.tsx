@@ -17,7 +17,7 @@ import { EmailAttachmentsField } from "./EmailAttachmentsField";
 import { TryAnotherNumberButtons } from "./TryAnotherNumberButtons";
 import { WhatsAppTemplatePicker } from "./WhatsAppTemplatePicker";
 import { ActionButton } from "./ui/ActionButton";
-import { IconTelegram, IconWhatsApp, IconX } from "./icons/AppIcons";
+import { IconWhatsApp, IconX } from "./icons/AppIcons";
 
 interface PostCallRemarksModalProps {
   onError: (message: string) => void;
@@ -358,31 +358,6 @@ export function PostCallRemarksModal({ onError, onSaved }: PostCallRemarksModalP
       onError(e instanceof Error ? e.message : "Failed to update training flag");
     } finally {
       setTrainSaving(false);
-    }
-  }
-
-  async function sendTelegram() {
-    if (!draft) return;
-    const phone = selectedPhone.trim();
-    if (!phone) {
-      onError("Select a phone number before sending Telegram.");
-      return;
-    }
-    const text = (whatsappBody || "").trim();
-    if (!text) {
-      onError("Message body is empty.");
-      return;
-    }
-    setSendingChannel("telegram");
-    setDraftNotice(null);
-    try {
-      await saveDraftEdits(false);
-      await client.sendTelegramPersonal(phone, text);
-      setDraftNotice(`Telegram sent to ${phone}.`);
-    } catch (e) {
-      onError(e instanceof Error ? e.message : "Failed to send Telegram");
-    } finally {
-      setSendingChannel(null);
     }
   }
 
@@ -1069,16 +1044,6 @@ export function PostCallRemarksModal({ onError, onSaved }: PostCallRemarksModalP
                   >
                     <IconWhatsApp size="md" className="text-white !h-7 !w-7" />
                     {sendingChannel === "whatsapp_personal" ? "Sending…" : "WhatsApp Mobile"}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => void sendTelegram()}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-sky-700 hover:bg-sky-600 disabled:opacity-50 px-3 py-2 text-sm font-medium"
-                    title="Send post-call follow-up via your Telegram Mobile account"
-                  >
-                    <IconTelegram size="md" className="!h-7 !w-7" />
-                    {sendingChannel === "telegram" ? "Sending…" : "Telegram"}
                   </button>
                   <button
                     type="button"

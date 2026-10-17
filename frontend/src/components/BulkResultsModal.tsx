@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { client, type EmailActivityBulkResults } from "../api/client";
-import { classifyWhatsAppFailure } from "../utils/whatsappFailure";
+import { classifyWhatsAppFailure, formatWhatsAppErrorForUser } from "../utils/whatsappFailure";
 
 interface BulkResultsModalProps {
   eventId: number;
@@ -213,7 +213,7 @@ export function BulkResultsModal({ eventId, onClose, onError, onOpenLead }: Bulk
                           row.status === "failed" ? "text-red-300/90" : "text-slate-500"
                         }`}
                       >
-                        {row.message}
+                        {formatWhatsAppErrorForUser(row.message)}
                       </p>
                     ) : null}
                     {isWhatsApp && row.status === "failed"

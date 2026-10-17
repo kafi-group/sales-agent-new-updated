@@ -15,7 +15,7 @@ from modules.activity import get_kpi_counts_for_range, get_kpi_report
 
 KPI_TZ = ZoneInfo("Asia/Karachi")
 
-GuidanceChannel = Literal["calls", "emails", "whatsapp", "telegram"]
+GuidanceChannel = Literal["calls", "emails", "whatsapp"]
 
 _REMARK_PATTERNS: list[tuple[str, str]] = [
     (r"not pick|no answer|did not receive|didn't pick|unanswered", "no_answer"),
@@ -37,8 +37,6 @@ def _normalize_channel(channel: str | None) -> GuidanceChannel:
         return "emails"
     if key in {"whatsapp", "wa", "meta", "whatsapp_meta"}:
         return "whatsapp"
-    if key in {"telegram", "tg"}:
-        return "telegram"
     return "calls"
 
 
@@ -763,48 +761,6 @@ def _whatsapp_guidance(
     }
 
 
-def _telegram_guidance(*, window: dict[str, Any], target_user_id: int | None, is_team_view: bool) -> dict[str, Any]:
-    return {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
-        "channel": "telegram",
-        "months": window.get("months"),
-        "days": window.get("days"),
-        "period_label": window.get("period_label"),
-        "since": window["since"].isoformat() if window.get("since") else None,
-        "until": window["until"].isoformat() if window.get("until") else None,
-        "user_id": target_user_id,
-        "is_team_view": is_team_view,
-        "is_agent_view": False,
-        "connected": False,
-        "kpi_by_month": [],
-        "kpi_totals": {},
-        "metric_tiles": [
-            {"label": "Sent", "value": 0},
-            {"label": "Failed", "value": 0},
-            {"label": "Replies", "value": 0},
-            {"label": "Status", "value": "Not connected"},
-        ],
-        "remark_patterns": {"scanned_remarks": 0, "pattern_counts": {}, "samples": {}},
-        "strengths": [],
-        "gaps": ["Telegram personal bridge is not fully connected for coaching yet."],
-        "recommendations": [
-            {
-                "title": "Telegram coaching coming next",
-                "body": (
-                    "Once Telegram replies are wired like WhatsApp Meta activity, this tab will show "
-                    "sent / failed / reply coaching for the selected period."
-                ),
-            }
-        ],
-        "approach_buyers": [
-            "Use WhatsApp Meta or email for outreach until Telegram reply tracking is live.",
-        ],
-        "save_phone_bill": [
-            "Prefer message channels before cold dialing abroad.",
-        ],
-    }
-
-
 def generate_helpful_guidance(
     db: Session,
     *,
@@ -816,7 +772,7 @@ def generate_helpful_guidance(
     date_from: str | None = None,
     date_to: str | None = None,
 ) -> dict[str, Any]:
-    """Build a coaching report for calls, emails, WhatsApp Meta, or Telegram."""
+    """Build a coaching report for calls, emails, or WhatsApp Meta."""
     ch = _normalize_channel(channel)
     window = resolve_guidance_window(
         days=days,
@@ -857,13 +813,6 @@ def generate_helpful_guidance(
             is_team_view=is_team_view,
             window=window,
         )
-    if ch == "telegram":
-        return _telegram_guidance(
-            window=window,
-            target_user_id=target_user_id,
-            is_team_view=is_team_view,
-        )
-
     return _calls_guidance(
         db,
         viewer=viewer,

@@ -203,6 +203,16 @@ export function ComposeMailModal({
       onError("Email body cannot be empty");
       return;
     }
+    if (
+      attachments.length === 0 &&
+      /please find attached/i.test(body.replace(/<[^>]+>/g, " "))
+    ) {
+      onError(
+        "This message says a file is attached, but no attachment is on the email. " +
+          "Attach the catalogue again (files under 10 MB), or remove that sentence and send a download link instead.",
+      );
+      return;
+    }
     setSending(true);
     try {
       const result = await client.composeInboxMail(

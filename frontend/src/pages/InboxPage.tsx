@@ -528,7 +528,9 @@ export function InboxPage({
    * Thread detail pane — unless we fell back to a single message open
    * (bounce / newsletter rows that 404 on /threads/{id}).
    */
-  const isThreadView = showThreadList && !selectedMessageKey;
+  const isThreadView =
+    (showThreadList && !selectedMessageKey) ||
+    (Boolean(selectedThreadId) && !selectedMessageKey && !messageDetail);
 
   useEffect(() => {
     if (!mailAiOpen) return;
@@ -1204,6 +1206,9 @@ export function InboxPage({
   const openMessage = useCallback(
     async (message: InboxMessageSummary) => {
       const folder = message.folder || "INBOX";
+      const folderName = folder.toLowerCase();
+      const isSentCopy =
+        message.direction === "outbound" || folderName.includes("sent");
       const key = `${folder}:${message.uid}`;
       setSelectedMessageKey(key);
       setSelectedThreadId(null);
@@ -1213,6 +1218,35 @@ export function InboxPage({
       setNotice(null);
       setShowReplyForm(false);
       setAiAnalysis(null);
+      if (isSentCopy) {
+        try {
+          const detail = await client.lookupInboxThread({
+            folder,
+            uid: String(message.uid),
+            message_id: message.message_id,
+            subject: message.subject,
+            mailbox_user_id: mailboxUserIdRef.current,
+          });
+          setSelectedMessageKey(null);
+          setSelectedThreadId(detail.thread_id);
+          setThread(detail);
+          setReplySubjectLine(replySubject(detail.subject));
+          const latestInbound = [...detail.messages]
+            .reverse()
+            .find((m) => m.direction !== "outbound");
+          const latest = latestInbound || detail.messages[detail.messages.length - 1];
+          if (latest?.direction === "outbound") {
+            setReplyTo((latest.to && latest.to[0]) || "");
+          } else {
+            setReplyTo(latest?.from_email || "");
+          }
+          void runThreadAnalyze(detail.thread_id, mailboxUserIdRef.current);
+          setDetailLoading(false);
+          return;
+        } catch {
+          setSelectedMessageKey(key);
+        }
+      }
       try {
         const detail = await client.getInboxMessage(
           message.uid,
@@ -1260,7 +1294,7 @@ export function InboxPage({
         setDetailLoading(false);
       }
     },
-    [runMessageAnalyze],
+    [runMessageAnalyze, runThreadAnalyze],
   );
   openMessageRef.current = openMessage;
 
@@ -2457,6 +2491,11 @@ export function InboxPage({
                             <span className="ml-1 text-slate-500">
                               · {item.message_count} msg{item.message_count === 1 ? "" : "s"}
                             </span>
+                            {item.in_junk ? (
+                              <span className="ml-1 inline-flex align-middle px-1.5 py-0 rounded border border-amber-600/60 text-[10px] font-medium text-amber-200 bg-amber-950/50">
+                                Junk
+                              </span>
+                            ) : null}
                           </div>
                           <div className="truncate text-xs text-slate-500">{item.latest_preview}</div>
                         </div>
@@ -2643,6 +2682,7 @@ export function InboxPage({
                           {" "}
                           · {thread.message_count} message
                           {thread.message_count === 1 ? "" : "s"}
+                          {thread.in_junk ? " · from Junk" : ""}
                         </span>
                       </p>
                     </div>
@@ -2845,6 +2885,12 @@ export function InboxPage({
                             </span>
                             {message.from_email && !outbound ? (
                               <span className="truncate text-slate-500">{message.from_email}</span>
+                            ) : null}
+                            {(message.folder || "").toLowerCase().includes("junk") ||
+                            (message.folder || "").toLowerCase().includes("spam") ? (
+                              <span className="shrink-0 rounded border border-amber-600/60 px-1.5 py-0 text-[10px] font-medium text-amber-200">
+                                Junk
+                              </span>
                             ) : null}
                             <span className="ml-auto shrink-0">{formatDate(message.date)}</span>
                           </div>

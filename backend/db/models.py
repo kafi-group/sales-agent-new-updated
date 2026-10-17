@@ -447,24 +447,6 @@ class WhatsAppPersonalTemplate(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-
-class TelegramPersonalTemplate(Base):
-    """Reusable free-text Telegram bodies for Telegram Mobile (GramJS) sends."""
-
-    __tablename__ = "telegram_personal_templates"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
-    body: Mapped[str] = mapped_column(Text, nullable=False)
-    created_by_user_id: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey("app_users.id", ondelete="SET NULL"), nullable=True, index=True
-    )
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
-    )
-
-
 class WhatsAppTemplate(Base):
     """WhatsApp message templates on the Meta WABA — synced and/or submitted via this app."""
 

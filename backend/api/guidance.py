@@ -24,7 +24,7 @@ def get_helpful_guidance(
     date_to: Optional[str] = Query(None, description="YYYY-MM-DD inclusive end"),
     channel: Optional[str] = Query(
         "calls",
-        description="calls | emails | whatsapp | telegram",
+        description="calls | emails | whatsapp",
     ),
     user_id: str | None = None,
     db: Session = Depends(get_db),

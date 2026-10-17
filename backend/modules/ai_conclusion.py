@@ -41,7 +41,6 @@ _MODE_META = (
     ("calls", "Call", "call"),
     ("whatsapp", "WhatsApp", "whatsapp"),
     ("emails", "Email", "email"),
-    ("telegram", "Telegram", "telegram"),
 )
 
 
@@ -122,7 +121,6 @@ def _last_contact_user_name(db: Session, buyer_id: int, fallback: str) -> str:
                     "call_outcome",
                     "personal_emails_sent",
                     "personal_whatsapp_sent",
-                    "telegram_personal_sent",
                 ]
             )
         )
@@ -156,7 +154,6 @@ def _mode_label(mode_key: str | None) -> str | None:
         "whatsapp": "WhatsApp",
         "emails": "Email",
         "email": "Email",
-        "telegram": "Telegram",
     }
     return mapping.get(mode_key)
 
@@ -214,8 +211,6 @@ def _channel_key(channel: Any) -> str:
         return "emails"
     if "whatsapp" in raw or raw == "wa":
         return "whatsapp"
-    if "telegram" in raw:
-        return "telegram"
     return "other"
 
 
@@ -224,7 +219,6 @@ def _empty_bucket() -> dict[str, int]:
         "calls": 0,
         "emails": 0,
         "whatsapp": 0,
-        "telegram": 0,
         "quotations": 0,
         "follow_ups_pending": 0,
     }

@@ -955,6 +955,67 @@ class OutlookClient:
             _UNREAD_CACHE[acct_k] = {"at": time.monotonic(), "count": inbox_unseen}
         return unique
 
+    def list_thread_source_messages(self, *, limit: int = 200) -> list[dict[str, Any]]:
+        """Fresh INBOX + Sent + Junk headers for conversation threading.
+
+        Never reads the list cache, so a reply that just arrived is included.
+        Junk stays out of the Junk folder view; callers decide which threads to show.
+        """
+        per_folder = max(1, min(int(limit), 250))
+        junk_limit = min(per_folder, 80)
+        with _imap_lock():
+            mailbox = self._mailbox("INBOX")
+            try:
+                inbox = self._fetch_folder(
+                    mailbox,
+                    "INBOX",
+                    limit=per_folder,
+                    headers_only=True,
+                )
+                sent: list[dict[str, Any]] = []
+                sent_folder = self._resolve_sent_folder(mailbox)
+                if sent_folder:
+                    sent = self._fetch_folder(
+                        mailbox,
+                        sent_folder,
+                        limit=per_folder,
+                        headers_only=True,
+                    )
+                junk: list[dict[str, Any]] = []
+                junk_folder = self._resolve_folder_name(mailbox, "junk")
+                if junk_folder:
+                    junk = self._fetch_folder(
+                        mailbox,
+                        junk_folder,
+                        limit=junk_limit,
+                        headers_only=True,
+                    )
+            finally:
+                try:
+                    mailbox.logout()
+                except Exception:  # noqa: BLE001
+                    pass
+
+        combined = [
+            m
+            for m in (inbox + sent + junk)
+            if not any(
+                marker in str(m.get("folder") or "").lower()
+                for marker in ("trash", "deleted")
+            )
+        ]
+        filtered = [m for m in combined if message_is_after_cutoff(m.get("date"))]
+        seen_ids: set[str] = set()
+        unique: list[dict[str, Any]] = []
+        for msg in sorted(filtered, key=lambda m: date_sort_key(m.get("date")), reverse=True):
+            mid = (msg.get("message_id") or "").strip().lower()
+            if mid:
+                if mid in seen_ids:
+                    continue
+                seen_ids.add(mid)
+            unique.append(msg)
+        return unique
+
     def _imap_folder_for(self, mailbox, folder: str | None) -> str:
         """Map logical keys (inbox/sent/…) or raw IMAP names to a selectable folder."""
         raw = (folder or "INBOX").strip() or "INBOX"
@@ -1157,6 +1218,8 @@ class OutlookClient:
         attachments: list[dict] | None = None,
         interaction_id: int | None = None,
         send_mode: str = "individual",
+        in_reply_to: str | None = None,
+        references: str | None = None,
     ) -> dict[str, Any]:
         """Send via standard SMTP AUTH — works for cPanel-hosted mail (e.g. mail.kafi-group.com)
         or any provider with SMTP enabled. Uses implicit SSL on port 465, STARTTLS otherwise."""
@@ -1204,6 +1267,10 @@ class OutlookClient:
         message["Message-ID"] = email_utils.make_msgid(
             domain=(from_addr or "localhost").split("@")[-1]
         )
+        if in_reply_to:
+            message["In-Reply-To"] = in_reply_to
+        if references:
+            message["References"] = references
 
         if html_body:
             if inline_images:
@@ -1568,6 +1635,8 @@ class OutlookClient:
                     cc=cc,
                     bcc=bcc,
                     attachments=attachments,
+                    in_reply_to=in_reply_to,
+                    references=references,
                 )
             if self._use_resend():
                 return self._send_resend(
@@ -1591,6 +1660,8 @@ class OutlookClient:
                 attachments=attachments,
                 interaction_id=interaction_id,
                 send_mode=send_mode,
+                in_reply_to=in_reply_to,
+                references=references,
             )
 
         att_list = attachments or []

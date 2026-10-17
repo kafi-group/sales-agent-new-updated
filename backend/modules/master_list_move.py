@@ -1,7 +1,7 @@
 """Move leads from one master list (FMCG / Minerals & Ores / Other Items ...) to another.
 
 A lead's master list is just ``Buyer.master_type``. Everything else about the lead — its contacts,
-emails and SMTP history, calls, WhatsApp / Telegram messages, assignment, remarks, interactions and
+emails and SMTP history, calls, WhatsApp messages, assignment, remarks, interactions and
 the section it sits in (sections are shared by every master list) — hangs off ``buyer_id`` /
 ``Buyer.source`` and is NOT touched. Only ``master_type`` changes, so the move can be undone by
 moving the same leads back.

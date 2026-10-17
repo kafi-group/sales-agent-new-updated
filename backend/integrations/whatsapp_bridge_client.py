@@ -502,7 +502,17 @@ def bridge_send(
             headers=_headers(),
         )
         if resp.status_code >= 400:
-            raise RuntimeError(_bridge_error_text(resp))
+            from integrations.whatsapp_client import (
+                NOT_ON_WHATSAPP_USER_MESSAGE,
+                recipient_not_on_whatsapp_error,
+            )
+
+            if resp.status_code == 404:
+                raise RuntimeError(NOT_ON_WHATSAPP_USER_MESSAGE)
+            detail = _bridge_error_text(resp)
+            if recipient_not_on_whatsapp_error(detail):
+                raise RuntimeError(NOT_ON_WHATSAPP_USER_MESSAGE)
+            raise RuntimeError(detail)
         data = resp.json() if resp.content else {"status": "sent"}
         if isinstance(data, dict) and data.get("delivered") is False:
             raise RuntimeError(str(data.get("error") or "WhatsApp did not confirm delivery."))

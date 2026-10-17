@@ -442,6 +442,46 @@ class WhatsAppClient:
 
 whatsapp_client = WhatsAppClient()
 
+NOT_ON_WHATSAPP_USER_MESSAGE = (
+    "This person does not exist on WhatsApp. "
+    "Check that you are using their personal mobile number (not a landline), then try again."
+)
+
+
+def recipient_not_on_whatsapp_error(raw: str | None, *, body: dict[str, Any] | None = None) -> bool:
+    """True when Meta / bridge text indicates the recipient has no WhatsApp account."""
+    text = (raw or "").strip()
+    if not text:
+        return False
+    lower = text.lower()
+    error_obj = (body or {}).get("error") or {}
+    code = error_obj.get("code")
+    if code in {131026, 131051}:
+        return True
+    if "131026" in text or "131051" in text:
+        return True
+    needles = (
+        "not a valid whatsapp",
+        "not on whatsapp",
+        "is not on whatsapp",
+        "does not exist on whatsapp",
+        "recipient number is not registered",
+        "not registered on whatsapp",
+        "message undeliverable",
+        "undeliverable",
+    )
+    return any(n in lower for n in needles)
+
+
+def user_facing_whatsapp_error(raw: str | None, *, body: dict[str, Any] | None = None) -> str:
+    """Normalize stored / displayed WhatsApp errors for sales reps."""
+    text = (raw or "").strip()
+    if not text:
+        return text
+    if recipient_not_on_whatsapp_error(text, body=body):
+        return NOT_ON_WHATSAPP_USER_MESSAGE
+    return text
+
 
 def _friendly_whatsapp_api_error(
     status_code: int, detail: str, body: dict[str, Any] | None = None
@@ -452,8 +492,8 @@ def _friendly_whatsapp_api_error(
     error_obj = (body or {}).get("error") or {}
     code = error_obj.get("code")
 
-    if code in {131026, 131051} or "not a valid whatsapp user" in lower or "not on whatsapp" in lower or "undeliverable" in lower or "not registered" in lower:
-        return f"Recipient number is not registered on WhatsApp. ({text})"
+    if recipient_not_on_whatsapp_error(text, body=body):
+        return NOT_ON_WHATSAPP_USER_MESSAGE
     if code in {131047, 131048} or "re-engagement" in lower or "24 hour" in lower or "experimental" in lower:
         return (
             "Outside the 24h customer-service window — Meta blocked free-text. "

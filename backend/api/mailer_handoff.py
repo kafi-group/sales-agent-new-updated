@@ -173,6 +173,9 @@ class MailerAppendSentRequest(BaseModel):
     cc: Optional[str] = None
     bcc: Optional[str] = None
     html: bool = True
+    message_id: Optional[str] = None
+    in_reply_to: Optional[str] = None
+    references: Optional[str] = None
 
 
 class MailerAppendSentResponse(BaseModel):
@@ -1125,6 +1128,9 @@ def append_mailer_sent_copy(
         cc=payload.cc,
         bcc=payload.bcc,
         html=payload.html,
+        message_id=payload.message_id,
+        in_reply_to=payload.in_reply_to,
+        references=payload.references,
     )
     return MailerAppendSentResponse(
         ok=bool(result.get("ok")),

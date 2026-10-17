@@ -51,6 +51,8 @@ def send_via_mailer(
     cc: str | None = None,
     bcc: str | None = None,
     attachments: list[dict] | None = None,
+    in_reply_to: str | None = None,
+    references: str | None = None,
 ) -> dict[str, Any]:
     """POST one message to the Vercel mailer /api/send endpoint."""
     secret = (settings.mailer_handoff_secret or "").strip()
@@ -143,6 +145,10 @@ def send_via_mailer(
         payload["bcc"] = bcc
     if attachment_refs:
         payload["attachments"] = attachment_refs
+    if (in_reply_to or "").strip():
+        payload["in_reply_to"] = in_reply_to.strip()
+    if (references or "").strip():
+        payload["references"] = references.strip()
 
     try:
         with httpx.Client(timeout=90.0) as client:
